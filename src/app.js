@@ -9,6 +9,7 @@ const path = require('path');
 const env = require('./config/env');
 const authRoutes = require('./routes/authRoutes');
 const tripRoutes = require('./routes/tripRoutes');
+const plannerRoutes = require('./routes/plannerRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
@@ -37,6 +38,7 @@ function createApp() {
   app.use('/api/v1/health', healthRoutes);
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/trips', tripRoutes);
+  app.use('/api/v1/planner', plannerRoutes);
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
 
   app.use(notFoundHandler);

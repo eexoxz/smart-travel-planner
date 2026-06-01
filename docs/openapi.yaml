@@ -124,6 +124,27 @@ paths:
           description: Trip deleted
         "404":
           description: Trip not found
+  /planner/trips/{id}/weather:
+    get:
+      summary: Combine a saved trip with current external weather data
+      description: Uses the authenticated user's trip destination, geocodes it with Open-Meteo, fetches current weather, and returns a travel recommendation.
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: Trip and current weather returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripWeatherResponse"
+        "401":
+          description: Missing or invalid JWT
+        "404":
+          description: Trip or destination not found
+        "502":
+          description: External API returned an invalid response
+        "503":
+          description: External API network failure
 components:
   securitySchemes:
     bearerAuth:
@@ -228,3 +249,62 @@ components:
           type: string
           enum: [planned, visited, cancelled]
           example: visited
+    TripWeatherResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            trip:
+              type: object
+            externalData:
+              type: object
+              properties:
+                weather:
+                  type: object
+                  properties:
+                    provider:
+                      type: string
+                      example: Open-Meteo
+                    location:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: Kyoto
+                        country:
+                          type: string
+                          example: Japan
+                        latitude:
+                          type: number
+                          example: 35.0211
+                        longitude:
+                          type: number
+                          example: 135.7538
+                    currentWeather:
+                      type: object
+                      properties:
+                        temperatureCelsius:
+                          type: number
+                          example: 28.1
+                        humidityPercent:
+                          type: number
+                          example: 72
+                        windSpeedKmh:
+                          type: number
+                          example: 9.4
+                        description:
+                          type: string
+                          example: Partly cloudy
+            recommendation:
+              type: object
+              properties:
+                destination:
+                  type: string
+                  example: Kyoto
+                summary:
+                  type: string
+                  example: Weather conditions look suitable for general sightseeing.

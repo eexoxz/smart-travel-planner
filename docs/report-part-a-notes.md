@@ -25,4 +25,10 @@ Zod validates request bodies, route parameters and query strings before the cont
 
 ## Why This Supports the Smart Travel Planner
 
-The API stores the user-specific travel data required by the assignment, including destinations, dates, notes, preferences, budget and trip status. Part B can combine this stored trip information with a third-party API such as weather or places data to produce meaningful travel planning results.
+The API stores the user-specific travel data required by the assignment, including destinations, dates, notes, preferences, budget and trip status. The Part B planner endpoint combines this stored trip information with Open-Meteo weather data to produce meaningful travel planning results.
+
+## Part B Third-Party API Integration
+
+The endpoint `GET /api/v1/planner/trips/:id/weather` demonstrates third-party API integration. It first reads the authenticated user's saved trip from the self-developed API, then sends the trip destination to Open-Meteo's geocoding API to obtain latitude and longitude. These coordinates are then used with Open-Meteo's forecast API to fetch current weather conditions.
+
+The final response combines internal and external data in one JSON result: the saved trip, the weather provider, resolved location, current temperature, humidity, wind speed, weather description and a simple travel recommendation. This meets the requirement to merge data from both the self-developed API and a third-party API.
