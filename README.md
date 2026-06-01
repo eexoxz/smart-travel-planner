@@ -88,6 +88,8 @@ All `/trips` endpoints require:
 Authorization: Bearer <JWT_TOKEN>
 ```
 
+In Swagger's **Authorize** popup, paste only the token value without quotation marks. Swagger adds the `Bearer` prefix automatically.
+
 ## Example Trip Request
 
 ```json

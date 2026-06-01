@@ -11,7 +11,7 @@ function authenticate(req, res, next) {
   }
 
   try {
-    const token = header.replace('Bearer ', '');
+    const token = header.replace(/^Bearer\s+/i, '').replace(/^Bearer\s+/i, '').trim();
     const payload = jwt.verify(token, env.jwtSecret);
     const user = userRepository.findById(payload.sub);
 
