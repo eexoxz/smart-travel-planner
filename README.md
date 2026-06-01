@@ -48,6 +48,23 @@ Opening `http://localhost:3000` redirects to the same documentation page.
 
 This demo version uses a local JSON file at `data/travel-planner.json` instead of SQLite or MongoDB. This avoids native package installation issues during demonstration while still showing persistent storage, user-owned trip records, and a clear repository layer that can later be swapped for a full database.
 
+## Third-Party API Integration
+
+Part B uses the Open-Meteo public API for live weather data. No API key or extra package is required.
+
+The combined endpoint is:
+
+```text
+GET /api/v1/planner/trips/:id/weather
+```
+
+It combines:
+
+- the authenticated user's saved trip from the local API
+- geocoded destination coordinates from Open-Meteo
+- current weather from Open-Meteo
+- a short travel recommendation based on the weather
+
 ## Main Endpoints
 
 | Method | Endpoint | Purpose |
@@ -59,6 +76,7 @@ This demo version uses a local JSON file at `data/travel-planner.json` instead o
 | `GET` | `/api/v1/trips/:id` | Read one trip |
 | `PUT` | `/api/v1/trips/:id` | Update one trip |
 | `DELETE` | `/api/v1/trips/:id` | Delete one trip |
+| `GET` | `/api/v1/planner/trips/:id/weather` | Combine saved trip with live weather |
 
 All `/trips` endpoints require:
 
@@ -95,6 +113,7 @@ For the report and demonstration, include screenshots of:
 - A successful `POST /api/v1/trips`.
 - A successful `GET /api/v1/trips`.
 - A failed request such as missing JWT or invalid date range.
+- A successful `GET /api/v1/planner/trips/:id/weather` showing third-party weather integration.
 - Swagger UI showing the documented endpoints.
 
 ## Suggested GitHub Commit History
@@ -109,6 +128,7 @@ git commit -m "Implement trip CRUD endpoints"
 git commit -m "Use JSON file storage for demo persistence"
 git commit -m "Add validation and centralized error handling"
 git commit -m "Add OpenAPI documentation and tests"
+git commit -m "Integrate external weather API"
 ```
 
 ## AI Use Acknowledgement
