@@ -30,6 +30,10 @@ function createApp() {
     app.use(morgan('combined'));
   }
 
+  app.get('/', (req, res) => {
+    res.redirect('/api-docs');
+  });
+
   app.use('/api/v1/health', healthRoutes);
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/trips', tripRoutes);

@@ -42,6 +42,8 @@ npm run dev
 http://localhost:3000/api-docs
 ```
 
+Opening `http://localhost:3000` redirects to the same documentation page.
+
 ## Storage Choice
 
 This demo version uses a local JSON file at `data/travel-planner.json` instead of SQLite or MongoDB. This avoids native package installation issues during demonstration while still showing persistent storage, user-owned trip records, and a clear repository layer that can later be swapped for a full database.
