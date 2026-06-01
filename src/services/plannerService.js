@@ -22,7 +22,7 @@ async function getAttractionsSafely(latitude, longitude) {
     return await attractionService.getNearbyAttractions(latitude, longitude);
   } catch (error) {
     return {
-      provider: 'Wikipedia GeoSearch API',
+      provider: 'Wikidata Query Service',
       searchRadiusMeters: 10000,
       available: false,
       attractions: [],

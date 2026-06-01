@@ -53,7 +53,7 @@ This demo version uses a local JSON file at `data/travel-planner.json` instead o
 Part B uses two public external APIs. No API key or extra package is required.
 
 - Open-Meteo for geocoding and current weather.
-- Wikipedia GeoSearch API for nearby places and attractions.
+- Wikidata Query Service for nearby specific attractions and points of interest.
 
 The combined endpoint is:
 
@@ -66,7 +66,7 @@ It combines:
 - the authenticated user's saved trip from the local API
 - geocoded destination coordinates from Open-Meteo
 - current weather from Open-Meteo
-- nearby places and attractions from Wikipedia
+- nearby specific attractions from Wikidata
 - a short travel recommendation based on the weather
 
 ## Main Endpoints

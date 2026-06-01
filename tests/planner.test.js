@@ -42,21 +42,20 @@ beforeAll(async () => {
     .mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        query: {
-          geosearch: [
+        results: {
+          bindings: [
             {
-              pageid: 101,
-              title: 'Kyoto National Museum',
-              lat: 35.019,
-              lon: 135.772,
-              dist: 350
+              place: { value: 'http://www.wikidata.org/entity/Q637720' },
+              placeLabel: { value: 'Kyoto National Museum' },
+              typeLabel: { value: 'museum' },
+              location: { value: 'Point(135.772 35.019)' },
+              article: { value: 'https://en.wikipedia.org/wiki/Kyoto_National_Museum' }
             },
             {
-              pageid: 102,
-              title: 'Nishiki Market',
-              lat: 35.012,
-              lon: 135.765,
-              dist: 920
+              place: { value: 'http://www.wikidata.org/entity/Q703170' },
+              placeLabel: { value: 'Nishiki Market' },
+              typeLabel: { value: 'tourist attraction' },
+              location: { value: 'Point(135.765 35.012)' }
             }
           ]
         }
@@ -100,7 +99,7 @@ test('combines a saved trip with external weather data', async () => {
   expect(response.body.data.trip.destination).toBe('Kyoto');
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
   expect(response.body.data.externalData.weather.currentWeather.description).toBe('Partly cloudy');
-  expect(response.body.data.externalData.attractions.provider).toBe('Wikipedia GeoSearch API');
+  expect(response.body.data.externalData.attractions.provider).toBe('Wikidata Query Service');
   expect(response.body.data.externalData.attractions.available).toBe(true);
   expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Kyoto National Museum');
   expect(response.body.data.recommendation.summary).toContain('Nearby attractions');
