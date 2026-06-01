@@ -42,28 +42,24 @@ beforeAll(async () => {
     .mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        elements: [
-          {
-            type: 'node',
-            id: 101,
-            lat: 35.019,
-            lon: 135.772,
-            tags: {
-              name: 'Kyoto National Museum',
-              tourism: 'museum'
+        query: {
+          geosearch: [
+            {
+              pageid: 101,
+              title: 'Kyoto National Museum',
+              lat: 35.019,
+              lon: 135.772,
+              dist: 350
+            },
+            {
+              pageid: 102,
+              title: 'Nishiki Market',
+              lat: 35.012,
+              lon: 135.765,
+              dist: 920
             }
-          },
-          {
-            type: 'node',
-            id: 102,
-            lat: 35.012,
-            lon: 135.765,
-            tags: {
-              name: 'Nishiki Market',
-              tourism: 'attraction'
-            }
-          }
-        ]
+          ]
+        }
       })
     });
 
@@ -104,7 +100,7 @@ test('combines a saved trip with external weather data', async () => {
   expect(response.body.data.trip.destination).toBe('Kyoto');
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
   expect(response.body.data.externalData.weather.currentWeather.description).toBe('Partly cloudy');
-  expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Overpass API');
+  expect(response.body.data.externalData.attractions.provider).toBe('Wikipedia GeoSearch API');
   expect(response.body.data.externalData.attractions.available).toBe(true);
   expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Kyoto National Museum');
   expect(response.body.data.recommendation.summary).toContain('Nearby attractions');

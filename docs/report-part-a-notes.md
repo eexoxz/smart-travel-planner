@@ -25,10 +25,10 @@ Zod validates request bodies, route parameters and query strings before the cont
 
 ## Why This Supports the Smart Travel Planner
 
-The API stores the user-specific travel data required by the assignment, including destinations, dates, notes, preferences, budget and trip status. The Part B planner endpoint combines this stored trip information with Open-Meteo weather data and OpenStreetMap attraction data to produce meaningful travel planning results.
+The API stores the user-specific travel data required by the assignment, including destinations, dates, notes, preferences, budget and trip status. The Part B planner endpoint combines this stored trip information with Open-Meteo weather data and Wikipedia GeoSearch nearby-place data to produce meaningful travel planning results.
 
 ## Part B Third-Party API Integration
 
-The endpoint `GET /api/v1/planner/trips/:id/summary` demonstrates third-party API integration. It first reads the authenticated user's saved trip from the self-developed API, then sends the trip destination to Open-Meteo's geocoding API to obtain latitude and longitude. These coordinates are then used with Open-Meteo's forecast API to fetch current weather conditions and with OpenStreetMap Overpass API to fetch nearby attractions.
+The endpoint `GET /api/v1/planner/trips/:id/summary` demonstrates third-party API integration. It first reads the authenticated user's saved trip from the self-developed API, then sends the trip destination to Open-Meteo's geocoding API to obtain latitude and longitude. These coordinates are then used with Open-Meteo's forecast API to fetch current weather conditions and with Wikipedia GeoSearch API to fetch nearby places and attractions.
 
 The final response combines internal and external data in one JSON result: the saved trip, weather provider, resolved location, current temperature, humidity, wind speed, weather description, nearby attractions and a simple travel recommendation. This meets the requirement to merge data from both the self-developed API and third-party APIs.

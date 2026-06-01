@@ -1,23 +1,28 @@
 const AppError = require('../utils/appError');
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
-const SEARCH_RADIUS_METERS = 5000;
+const WIKIPEDIA_GEOSEARCH_URL = 'https://en.wikipedia.org/w/api.php';
+const SEARCH_RADIUS_METERS = 10000;
 const RESULT_LIMIT = 5;
 
 async function getNearbyAttractions(latitude, longitude) {
-  const query = `
-    [out:json][timeout:15];
-    (
-      node["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park)$"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-    );
-    out tags ${RESULT_LIMIT};
-  `;
+  const params = new URLSearchParams({
+    action: 'query',
+    list: 'geosearch',
+    gscoord: `${latitude}|${longitude}`,
+    gsradius: String(SEARCH_RADIUS_METERS),
+    gslimit: String(RESULT_LIMIT),
+    format: 'json',
+    origin: '*'
+  });
 
-  const params = new URLSearchParams({ data: query });
   let response;
 
   try {
-    response = await fetch(`${OVERPASS_URL}?${params}`);
+    response = await fetch(`${WIKIPEDIA_GEOSEARCH_URL}?${params}`, {
+      headers: {
+        'User-Agent': 'SmartTravelPlannerStudentProject/1.0'
+      }
+    });
   } catch (error) {
     throw new AppError('Unable to fetch nearby attractions: network request failed', 503);
   }
@@ -27,30 +32,28 @@ async function getNearbyAttractions(latitude, longitude) {
   }
 
   const data = await response.json();
-  const attractions = (data.elements || [])
+  const attractions = (data.query?.geosearch || [])
     .map(mapAttraction)
     .filter((attraction) => attraction.name)
     .slice(0, RESULT_LIMIT);
 
   return {
-    provider: 'OpenStreetMap Overpass API',
+    provider: 'Wikipedia GeoSearch API',
     searchRadiusMeters: SEARCH_RADIUS_METERS,
     available: true,
     attractions
   };
 }
 
-function mapAttraction(element) {
-  const tags = element.tags || {};
-  const latitude = element.lat ?? element.center?.lat;
-  const longitude = element.lon ?? element.center?.lon;
-
+function mapAttraction(place) {
   return {
-    id: `${element.type}/${element.id}`,
-    name: tags.name,
-    category: tags.tourism || 'attraction',
-    latitude,
-    longitude
+    id: String(place.pageid),
+    name: place.title,
+    category: 'point_of_interest',
+    latitude: place.lat,
+    longitude: place.lon,
+    distanceMeters: place.dist,
+    url: `https://en.wikipedia.org/?curid=${place.pageid}`
   };
 }
 

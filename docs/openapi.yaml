@@ -127,7 +127,7 @@ paths:
   /planner/trips/{id}/summary:
     get:
       summary: Combine a saved trip with weather and nearby attractions
-      description: Uses the authenticated user's trip destination, geocodes it with Open-Meteo, fetches current weather, retrieves nearby attractions from OpenStreetMap Overpass, and returns a travel recommendation.
+      description: Uses the authenticated user's trip destination, geocodes it with Open-Meteo, fetches current weather, retrieves nearby places from Wikipedia GeoSearch, and returns a travel recommendation.
       parameters:
         - $ref: "#/components/parameters/TripId"
       responses:
@@ -313,10 +313,10 @@ components:
                   properties:
                     provider:
                       type: string
-                      example: OpenStreetMap Overpass API
+                      example: Wikipedia GeoSearch API
                     searchRadiusMeters:
                       type: integer
-                      example: 5000
+                      example: 10000
                     attractions:
                       type: array
                       items:
@@ -327,7 +327,10 @@ components:
                             example: Kyoto National Museum
                           category:
                             type: string
-                            example: museum
+                            example: point_of_interest
+                          url:
+                            type: string
+                            example: https://en.wikipedia.org/?curid=12345
             recommendation:
               type: object
               properties:

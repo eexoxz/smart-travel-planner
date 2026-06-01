@@ -22,8 +22,8 @@ async function getAttractionsSafely(latitude, longitude) {
     return await attractionService.getNearbyAttractions(latitude, longitude);
   } catch (error) {
     return {
-      provider: 'OpenStreetMap Overpass API',
-      searchRadiusMeters: 5000,
+      provider: 'Wikipedia GeoSearch API',
+      searchRadiusMeters: 10000,
       available: false,
       attractions: [],
       message: error.message
