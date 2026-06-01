@@ -50,12 +50,15 @@ This demo version uses a local JSON file at `data/travel-planner.json` instead o
 
 ## Third-Party API Integration
 
-Part B uses the Open-Meteo public API for live weather data. No API key or extra package is required.
+Part B uses two public external APIs. No API key or extra package is required.
+
+- Open-Meteo for geocoding and current weather.
+- OpenStreetMap Overpass API for nearby attractions.
 
 The combined endpoint is:
 
 ```text
-GET /api/v1/planner/trips/:id/weather
+GET /api/v1/planner/trips/:id/summary
 ```
 
 It combines:
@@ -63,6 +66,7 @@ It combines:
 - the authenticated user's saved trip from the local API
 - geocoded destination coordinates from Open-Meteo
 - current weather from Open-Meteo
+- nearby attractions from OpenStreetMap
 - a short travel recommendation based on the weather
 
 ## Main Endpoints
@@ -76,7 +80,7 @@ It combines:
 | `GET` | `/api/v1/trips/:id` | Read one trip |
 | `PUT` | `/api/v1/trips/:id` | Update one trip |
 | `DELETE` | `/api/v1/trips/:id` | Delete one trip |
-| `GET` | `/api/v1/planner/trips/:id/weather` | Combine saved trip with live weather |
+| `GET` | `/api/v1/planner/trips/:id/summary` | Combine saved trip with live weather and attractions |
 
 All `/trips` endpoints require:
 
@@ -113,7 +117,7 @@ For the report and demonstration, include screenshots of:
 - A successful `POST /api/v1/trips`.
 - A successful `GET /api/v1/trips`.
 - A failed request such as missing JWT or invalid date range.
-- A successful `GET /api/v1/planner/trips/:id/weather` showing third-party weather integration.
+- A successful `GET /api/v1/planner/trips/:id/summary` showing third-party weather and attractions integration.
 - Swagger UI showing the documented endpoints.
 
 ## Suggested GitHub Commit History

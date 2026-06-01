@@ -38,6 +38,33 @@ beforeAll(async () => {
           wind_speed_10m: 10
         }
       })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        elements: [
+          {
+            type: 'node',
+            id: 101,
+            lat: 35.019,
+            lon: 135.772,
+            tags: {
+              name: 'Kyoto National Museum',
+              tourism: 'museum'
+            }
+          },
+          {
+            type: 'node',
+            id: 102,
+            lat: 35.012,
+            lon: 135.765,
+            tags: {
+              name: 'Nishiki Market',
+              tourism: 'attraction'
+            }
+          }
+        ]
+      })
     });
 
   const registered = await request(app)
@@ -70,13 +97,15 @@ afterAll(() => {
 
 test('combines a saved trip with external weather data', async () => {
   const response = await request(app)
-    .get(`/api/v1/planner/trips/${tripId}/weather`)
+    .get(`/api/v1/planner/trips/${tripId}/summary`)
     .set('Authorization', `Bearer ${token}`);
 
   expect(response.status).toBe(200);
   expect(response.body.data.trip.destination).toBe('Kyoto');
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
   expect(response.body.data.externalData.weather.currentWeather.description).toBe('Partly cloudy');
-  expect(response.body.data.recommendation.summary).toContain('sightseeing');
-  expect(global.fetch).toHaveBeenCalledTimes(2);
+  expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Overpass API');
+  expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Kyoto National Museum');
+  expect(response.body.data.recommendation.summary).toContain('Nearby attractions');
+  expect(global.fetch).toHaveBeenCalledTimes(3);
 });

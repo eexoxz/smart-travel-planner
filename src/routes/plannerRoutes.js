@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/trips/:id/weather', validate(idParam), asyncHandler(plannerController.getTripWeather));
+router.get('/trips/:id/summary', validate(idParam), asyncHandler(plannerController.getTripPlan));
+router.get('/trips/:id/weather', validate(idParam), asyncHandler(plannerController.getTripPlan));
 
 module.exports = router;

@@ -124,15 +124,15 @@ paths:
           description: Trip deleted
         "404":
           description: Trip not found
-  /planner/trips/{id}/weather:
+  /planner/trips/{id}/summary:
     get:
-      summary: Combine a saved trip with current external weather data
-      description: Uses the authenticated user's trip destination, geocodes it with Open-Meteo, fetches current weather, and returns a travel recommendation.
+      summary: Combine a saved trip with weather and nearby attractions
+      description: Uses the authenticated user's trip destination, geocodes it with Open-Meteo, fetches current weather, retrieves nearby attractions from OpenStreetMap Overpass, and returns a travel recommendation.
       parameters:
         - $ref: "#/components/parameters/TripId"
       responses:
         "200":
-          description: Trip and current weather returned
+          description: Trip, current weather and attractions returned
           content:
             application/json:
               schema:
@@ -145,6 +145,15 @@ paths:
           description: External API returned an invalid response
         "503":
           description: External API network failure
+  /planner/trips/{id}/weather:
+    get:
+      summary: Backward-compatible alias for trip planning summary
+      description: Returns the same combined response as `/planner/trips/{id}/summary`.
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: Trip, current weather and attractions returned
 components:
   securitySchemes:
     bearerAuth:
@@ -299,6 +308,26 @@ components:
                         description:
                           type: string
                           example: Partly cloudy
+                attractions:
+                  type: object
+                  properties:
+                    provider:
+                      type: string
+                      example: OpenStreetMap Overpass API
+                    searchRadiusMeters:
+                      type: integer
+                      example: 5000
+                    attractions:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            example: Kyoto National Museum
+                          category:
+                            type: string
+                            example: museum
             recommendation:
               type: object
               properties:

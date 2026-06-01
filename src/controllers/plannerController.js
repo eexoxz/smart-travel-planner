@@ -1,6 +1,6 @@
 const plannerService = require('../services/plannerService');
 
-async function getTripWeather(req, res) {
+async function getTripPlan(req, res) {
   const summary = await plannerService.getTripWeatherSummary(req.user.id, req.validated.params.id);
 
   res.status(200).json({
@@ -10,5 +10,5 @@ async function getTripWeather(req, res) {
 }
 
 module.exports = {
-  getTripWeather
+  getTripPlan
 };
