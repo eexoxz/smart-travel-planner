@@ -105,6 +105,7 @@ test('combines a saved trip with external weather data', async () => {
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
   expect(response.body.data.externalData.weather.currentWeather.description).toBe('Partly cloudy');
   expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Overpass API');
+  expect(response.body.data.externalData.attractions.available).toBe(true);
   expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Kyoto National Museum');
   expect(response.body.data.recommendation.summary).toContain('Nearby attractions');
   expect(global.fetch).toHaveBeenCalledTimes(3);

@@ -5,10 +5,7 @@ const attractionService = require('./attractionService');
 async function getTripWeatherSummary(userId, tripId) {
   const trip = tripService.getTrip(userId, tripId);
   const weather = await weatherService.getWeatherForDestination(trip.destination, trip.country);
-  const attractions = await attractionService.getNearbyAttractions(
-    weather.location.latitude,
-    weather.location.longitude
-  );
+  const attractions = await getAttractionsSafely(weather.location.latitude, weather.location.longitude);
 
   return {
     trip,
@@ -18,6 +15,20 @@ async function getTripWeatherSummary(userId, tripId) {
     },
     recommendation: buildRecommendation(trip, weather.currentWeather, attractions)
   };
+}
+
+async function getAttractionsSafely(latitude, longitude) {
+  try {
+    return await attractionService.getNearbyAttractions(latitude, longitude);
+  } catch (error) {
+    return {
+      provider: 'OpenStreetMap Overpass API',
+      searchRadiusMeters: 5000,
+      available: false,
+      attractions: [],
+      message: error.message
+    };
+  }
 }
 
 function buildRecommendation(trip, weather, attractions) {
@@ -42,6 +53,8 @@ function buildRecommendation(trip, weather, attractions) {
   if (attractions.attractions.length > 0) {
     const names = attractions.attractions.slice(0, 3).map((attraction) => attraction.name).join(', ');
     advice.push(`Nearby attractions to consider: ${names}.`);
+  } else if (!attractions.available) {
+    advice.push('Nearby attractions could not be loaded at the moment, but the weather result is still available.');
   }
 
   return {

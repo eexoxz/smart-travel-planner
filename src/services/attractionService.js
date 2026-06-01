@@ -9,10 +9,8 @@ async function getNearbyAttractions(latitude, longitude) {
     [out:json][timeout:15];
     (
       node["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park)$"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-      way["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park)$"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
-      relation["tourism"~"^(attraction|museum|viewpoint|gallery|zoo|theme_park)$"](around:${SEARCH_RADIUS_METERS},${latitude},${longitude});
     );
-    out center tags ${RESULT_LIMIT};
+    out tags ${RESULT_LIMIT};
   `;
 
   const params = new URLSearchParams({ data: query });
@@ -37,6 +35,7 @@ async function getNearbyAttractions(latitude, longitude) {
   return {
     provider: 'OpenStreetMap Overpass API',
     searchRadiusMeters: SEARCH_RADIUS_METERS,
+    available: true,
     attractions
   };
 }
