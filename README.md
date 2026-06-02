@@ -83,7 +83,7 @@ The interface supports:
 
 - register and login
 - create, read, update and delete trips
-- view a planner summary that combines saved trip data with weather and nearby points of interest
+- generate a travel plan that combines saved trip data with weather and nearby points of interest
 - open Swagger documentation for API testing
 
 ## Main Endpoints

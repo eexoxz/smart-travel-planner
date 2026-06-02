@@ -164,7 +164,7 @@ function renderTrips() {
       </header>
       <p>${escapeHtml(trip.notes || 'No notes')}</p>
       <div class="card-actions">
-        <button type="button" data-action="summary" data-id="${trip.id}">Summary</button>
+        <button type="button" data-action="summary" data-id="${trip.id}">Generate plan</button>
         <button type="button" data-action="edit" data-id="${trip.id}">Edit</button>
         <button type="button" data-action="delete" data-id="${trip.id}">Delete</button>
       </div>
@@ -199,7 +199,7 @@ async function handleTripListClick(event) {
 }
 
 async function loadSummary(tripId) {
-  elements.summaryContent.innerHTML = '<div class="summary-empty">Loading summary...</div>';
+  elements.summaryContent.innerHTML = '<div class="summary-empty">Generating travel plan...</div>';
   const payload = await apiRequest(`/planner/trips/${tripId}/summary`);
   renderSummary(payload.data);
 }
@@ -207,6 +207,7 @@ async function loadSummary(tripId) {
 function renderSummary(data) {
   const weather = data.externalData.weather.currentWeather;
   const attractions = data.externalData.attractions;
+  const plan = data.travelPlan;
   const attractionItems = attractions.attractions.length
     ? attractions.attractions.map((item) => `
       <li>
@@ -219,7 +220,7 @@ function renderSummary(data) {
   elements.summaryContent.innerHTML = `
     <div class="summary-content">
       <div class="summary-block">
-        <h3>${escapeHtml(data.trip.destination)}</h3>
+        <h3>${escapeHtml(plan.title)}</h3>
         <p>${escapeHtml(data.recommendation.summary)}</p>
       </div>
       <div class="summary-grid">
@@ -228,12 +229,26 @@ function renderSummary(data) {
         <div class="metric"><span>Wind</span><strong>${weather.windSpeedKmh} km/h</strong></div>
       </div>
       <section>
-        <h4>Weather</h4>
-        <p>${escapeHtml(weather.description)} · ${escapeHtml(data.externalData.weather.provider)}</p>
+        <h4>Trip Overview</h4>
+        <p>${escapeHtml(plan.overview)}</p>
       </section>
       <section>
-        <h4>Nearby Places</h4>
+        <h4>Weather Advice</h4>
+        <p>${escapeHtml(weather.description)} · ${escapeHtml(plan.weatherAdvice)}</p>
+      </section>
+      <section>
+        <h4>Suggested Nearby Places</h4>
         <ol class="attraction-list">${attractionItems}</ol>
+      </section>
+      <section>
+        <h4>Preparation Tips</h4>
+        <ul class="attraction-list">
+          ${plan.preparationTips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join('')}
+        </ul>
+      </section>
+      <section>
+        <h4>Limitations</h4>
+        <p>${escapeHtml(plan.limitation)}</p>
       </section>
     </div>
   `;
@@ -263,7 +278,7 @@ function logout() {
   setSessionStatus();
   state.trips = [];
   renderTrips();
-  elements.summaryContent.innerHTML = '<div class="summary-empty">Select a trip summary.</div>';
+  elements.summaryContent.innerHTML = '<div class="summary-empty">Select a saved trip and generate a travel plan.</div>';
   showToast('Signed out');
 }
 

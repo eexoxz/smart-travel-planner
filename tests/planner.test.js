@@ -103,5 +103,8 @@ test('combines a saved trip with external weather data', async () => {
   expect(response.body.data.externalData.attractions.available).toBe(true);
   expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Kyoto National Museum');
   expect(response.body.data.recommendation.summary).toContain('Nearby attractions');
+  expect(response.body.data.travelPlan.title).toBe('Kyoto travel plan');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Kyoto National Museum');
+  expect(response.body.data.travelPlan.preparationTips).toContain('Check attraction opening hours before visiting museums or cultural sites.');
   expect(global.fetch).toHaveBeenCalledTimes(3);
 });

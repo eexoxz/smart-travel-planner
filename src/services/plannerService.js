@@ -13,7 +13,8 @@ async function getTripWeatherSummary(userId, tripId) {
       weather,
       attractions
     },
-    recommendation: buildRecommendation(trip, weather.currentWeather, attractions)
+    recommendation: buildRecommendation(trip, weather.currentWeather, attractions),
+    travelPlan: buildTravelPlan(trip, weather.currentWeather, attractions)
   };
 }
 
@@ -61,6 +62,84 @@ function buildRecommendation(trip, weather, attractions) {
     destination: trip.destination,
     summary: advice.join(' ')
   };
+}
+
+function buildTravelPlan(trip, weather, attractions) {
+  const nearbyPlaces = attractions.attractions.slice(0, 5).map((attraction, index) => ({
+    order: index + 1,
+    name: attraction.name,
+    category: attraction.category,
+    url: attraction.url
+  }));
+
+  return {
+    title: `${trip.destination} travel plan`,
+    overview: buildOverview(trip),
+    weatherAdvice: buildWeatherAdvice(weather),
+    suggestedPlaces: nearbyPlaces,
+    preparationTips: buildPreparationTips(trip, weather),
+    limitation: attractions.available
+      ? 'Nearby places are based on public Wikidata records and should be checked before final booking.'
+      : 'Nearby places could not be loaded, so this plan is based on trip notes and weather only.'
+  };
+}
+
+function buildOverview(trip) {
+  const dates = trip.endDate
+    ? `${trip.startDate} to ${trip.endDate}`
+    : `starting ${trip.startDate}`;
+  const preferences = trip.preferenceTags.length
+    ? `Preferences: ${trip.preferenceTags.join(', ')}.`
+    : 'No specific preferences were saved.';
+
+  return `${trip.destination}${trip.country ? `, ${trip.country}` : ''} trip ${dates}. ${preferences}`;
+}
+
+function buildWeatherAdvice(weather) {
+  if (weather.temperatureCelsius >= 30) {
+    return 'Plan outdoor activities earlier or later in the day and schedule indoor breaks during hotter hours.';
+  }
+
+  if (weather.weatherCode >= 61 && weather.weatherCode <= 82) {
+    return 'Keep flexible indoor options because rain may affect outdoor sightseeing.';
+  }
+
+  if (weather.windSpeedKmh >= 30) {
+    return 'Avoid exposed outdoor activities until wind conditions improve.';
+  }
+
+  return 'Weather conditions look suitable for normal sightseeing.';
+}
+
+function buildPreparationTips(trip, weather) {
+  const tips = ['Bring a charged phone and keep important booking details accessible.'];
+  const tags = trip.preferenceTags.map((tag) => tag.toLowerCase());
+
+  if (weather.temperatureCelsius >= 30) {
+    tips.push('Carry water, sunscreen and light clothing.');
+  }
+
+  if (weather.weatherCode >= 51 && weather.weatherCode <= 82) {
+    tips.push('Pack an umbrella or raincoat.');
+  }
+
+  if (tags.includes('food')) {
+    tips.push('Reserve time for local food spots and keep meal times flexible.');
+  }
+
+  if (tags.includes('culture') || tags.includes('museums')) {
+    tips.push('Check attraction opening hours before visiting museums or cultural sites.');
+  }
+
+  if (tags.includes('beach')) {
+    tips.push('Check tide, heat and rain conditions before planning beach time.');
+  }
+
+  if (trip.budgetAmount) {
+    tips.push(`Keep the plan within the saved budget of ${trip.budgetAmount}.`);
+  }
+
+  return tips;
 }
 
 module.exports = {
