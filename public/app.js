@@ -327,17 +327,23 @@ function renderSummary(data) {
   const plan = data.travelPlan;
   const attractionItems = attractions.attractions.length
     ? attractions.attractions.map((item) => `
-      <li>
-        <a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(item.name)}</a>
-        <span> ${escapeHtml(item.category)}</span>
-      </li>
+      <a class="place-card" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">
+        <strong>${escapeHtml(item.name)}</strong>
+        <span>${escapeHtml(item.category)}</span>
+      </a>
     `).join('')
-    : `<li>${escapeHtml(attractions.message || 'No nearby places returned.')}</li>`;
+    : `<div class="notice">${escapeHtml(attractions.message || 'No nearby places returned.')}</div>`;
+  const tips = plan.preparationTips
+    .map((tip) => `<span class="tip-chip">${escapeHtml(tip)}</span>`)
+    .join('');
 
   elements.summaryContent.innerHTML = `
     <div class="summary-content">
-      <div class="summary-block">
-        <h3>${escapeHtml(plan.title)}</h3>
+      <div class="plan-hero">
+        <div>
+          <span class="eyebrow">Generated plan</span>
+          <h3>${escapeHtml(plan.title)}</h3>
+        </div>
         <p>${escapeHtml(data.recommendation.summary)}</p>
       </div>
       <div class="summary-grid">
@@ -345,25 +351,23 @@ function renderSummary(data) {
         <div class="metric"><span>Humidity</span><strong>${weather.humidityPercent}%</strong></div>
         <div class="metric"><span>Wind</span><strong>${weather.windSpeedKmh} km/h</strong></div>
       </div>
-      <section>
+      <section class="plan-section">
         <h4>Trip Overview</h4>
         <p>${escapeHtml(plan.overview)}</p>
       </section>
-      <section>
+      <section class="plan-section">
         <h4>Weather Advice</h4>
         <p>${escapeHtml(weather.description)} - ${escapeHtml(plan.weatherAdvice)}</p>
       </section>
-      <section>
+      <section class="plan-section">
         <h4>Suggested Nearby Places</h4>
-        <ol class="attraction-list">${attractionItems}</ol>
+        <div class="place-grid">${attractionItems}</div>
       </section>
-      <section>
+      <section class="plan-section">
         <h4>Preparation Tips</h4>
-        <ul class="attraction-list">
-          ${plan.preparationTips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join('')}
-        </ul>
+        <div class="tip-grid">${tips}</div>
       </section>
-      <section>
+      <section class="plan-section muted-section">
         <h4>Limitations</h4>
         <p>${escapeHtml(plan.limitation)}</p>
       </section>

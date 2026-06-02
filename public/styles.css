@@ -323,7 +323,8 @@ textarea {
 
 .summary-content {
   display: grid;
-  gap: 14px;
+  gap: 16px;
+  padding: 4px;
 }
 
 .summary-content h3,
@@ -331,10 +332,36 @@ textarea {
   margin: 0;
 }
 
-.summary-block {
-  border-left: 4px solid var(--primary);
-  padding: 10px 12px;
-  background: var(--pink-soft);
+.plan-hero {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--pink-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 47, 134, 0.16), rgba(255, 255, 255, 0.82)),
+    #fff;
+}
+
+.plan-hero h3 {
+  font-size: 24px;
+  color: var(--black);
+}
+
+.plan-hero p {
+  margin: 0;
+  max-width: 880px;
+  color: #5f5160;
+  line-height: 1.55;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin-bottom: 6px;
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .summary-grid {
@@ -346,19 +373,95 @@ textarea {
 .metric {
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 14px;
   background: #fff;
+}
+
+.metric span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .metric strong {
   display: block;
-  font-size: 20px;
+  font-size: 24px;
   color: var(--primary-strong);
 }
 
-.attraction-list {
+.plan-section {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.plan-section h4 {
+  margin-bottom: 10px;
+  color: var(--black);
+  font-size: 16px;
+}
+
+.plan-section p {
   margin: 0;
-  padding-left: 20px;
+  color: #5f5160;
+  line-height: 1.55;
+}
+
+.place-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.place-card {
+  display: grid;
+  gap: 6px;
+  min-height: 76px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--pink-soft);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.place-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 18px rgba(255, 47, 134, 0.13);
+}
+
+.place-card strong {
+  color: var(--primary-strong);
+}
+
+.place-card span,
+.notice {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tip-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid var(--pink-line);
+  border-radius: 999px;
+  background: #fff;
+  color: #5f5160;
+}
+
+.muted-section {
+  background: #fff9fc;
 }
 
 .toast {
@@ -398,7 +501,8 @@ textarea {
   .trip-grid,
   .summary-grid,
   .preference-grid,
-  .inline-fields {
+  .inline-fields,
+  .place-grid {
     grid-template-columns: 1fr;
   }
 }
