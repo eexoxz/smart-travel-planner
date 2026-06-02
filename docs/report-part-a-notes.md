@@ -32,3 +32,9 @@ The API stores the user-specific travel data required by the assignment, includi
 The endpoint `GET /api/v1/planner/trips/:id/summary` demonstrates third-party API integration. It first reads the authenticated user's saved trip from the self-developed API, then sends the trip destination to Open-Meteo's geocoding API to obtain latitude and longitude. These coordinates are then used with Open-Meteo's forecast API to fetch current weather conditions and with Wikidata Query Service to fetch nearby specific points of interest such as attractions, museums, parks, beaches, temples, monuments and heritage sites.
 
 The final response combines internal and external data in one JSON result: the saved trip, weather provider, resolved location, current temperature, humidity, wind speed, weather description, nearby attractions and a simple travel recommendation. This meets the requirement to merge data from both the self-developed API and third-party APIs.
+
+## Part C Application Layer
+
+The application layer is implemented as a web interface using HTML, CSS and JavaScript. It is served from the Express backend at `/app`, so no separate frontend server is required. Users can register or log in, create travel records, view saved trips, update or delete trips and request a planner summary for a selected trip.
+
+The planner summary demonstrates the full system workflow because it takes user-specific trip data from the self-developed API and combines it with third-party weather and point-of-interest data. This gives the user a clear result rather than separate raw API responses.

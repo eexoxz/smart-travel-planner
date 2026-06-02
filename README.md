@@ -42,7 +42,13 @@ npm run dev
 http://localhost:3000/api-docs
 ```
 
-Opening `http://localhost:3000` redirects to the same documentation page.
+Open the application interface:
+
+```text
+http://localhost:3000/app
+```
+
+Opening `http://localhost:3000` redirects to the application interface.
 
 ## Storage Choice
 
@@ -68,6 +74,17 @@ It combines:
 - current weather from Open-Meteo
 - nearby specific attractions from Wikidata
 - a short travel recommendation based on the weather
+
+## Application Layer
+
+Part C is implemented as a plain HTML/CSS/JavaScript web interface served by the Express backend. No extra frontend setup is required.
+
+The interface supports:
+
+- register and login
+- create, read, update and delete trips
+- view a planner summary that combines saved trip data with weather and nearby points of interest
+- open Swagger documentation for API testing
 
 ## Main Endpoints
 
@@ -116,6 +133,7 @@ npm test
 For the report and demonstration, include screenshots of:
 
 - A successful user registration or login.
+- The `/app` interface showing saved trips.
 - A successful `POST /api/v1/trips`.
 - A successful `GET /api/v1/trips`.
 - A failed request such as missing JWT or invalid date range.
@@ -135,6 +153,7 @@ git commit -m "Use JSON file storage for demo persistence"
 git commit -m "Add validation and centralized error handling"
 git commit -m "Add OpenAPI documentation and tests"
 git commit -m "Integrate external weather API"
+git commit -m "Add web application interface"
 ```
 
 ## AI Use Acknowledgement

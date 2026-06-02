@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Smart Travel Planner</title>
+    <link rel="stylesheet" href="/app/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Smart Travel Planner</h1>
+        <p id="sessionStatus">Signed out</p>
+      </div>
+      <nav>
+        <a href="/api-docs">API Docs</a>
+        <button id="logoutButton" type="button">Sign out</button>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="panel auth-panel" aria-labelledby="authTitle">
+        <div class="panel-heading">
+          <h2 id="authTitle">Account</h2>
+          <div class="segmented">
+            <button id="loginTab" class="active" type="button">Login</button>
+            <button id="registerTab" type="button">Register</button>
+          </div>
+        </div>
+
+        <form id="authForm" class="stack">
+          <label id="nameField">
+            Name
+            <input id="nameInput" autocomplete="name" placeholder="Test Student">
+          </label>
+          <label>
+            Email
+            <input id="emailInput" type="email" autocomplete="email" value="teststudent@example.com">
+          </label>
+          <label>
+            Password
+            <input id="passwordInput" type="password" autocomplete="current-password" value="Password123">
+          </label>
+          <button class="primary" type="submit">Continue</button>
+        </form>
+      </section>
+
+      <section class="panel trip-form-panel" aria-labelledby="tripFormTitle">
+        <div class="panel-heading">
+          <h2 id="tripFormTitle">Trip</h2>
+          <button id="resetTripFormButton" type="button">New</button>
+        </div>
+
+        <form id="tripForm" class="trip-grid">
+          <input id="tripIdInput" type="hidden">
+          <label>
+            Destination
+            <input id="destinationInput" required placeholder="Penang">
+          </label>
+          <label>
+            Country
+            <input id="countryInput" placeholder="Malaysia">
+          </label>
+          <label>
+            Start date
+            <input id="startDateInput" required type="date">
+          </label>
+          <label>
+            End date
+            <input id="endDateInput" type="date">
+          </label>
+          <label>
+            Budget
+            <input id="budgetInput" type="number" min="1" step="1" placeholder="1200">
+          </label>
+          <label>
+            Status
+            <select id="statusInput">
+              <option value="planned">Planned</option>
+              <option value="visited">Visited</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </label>
+          <label class="wide">
+            Preferences
+            <input id="tagsInput" placeholder="food, culture, beach">
+          </label>
+          <label class="wide">
+            Notes
+            <textarea id="notesInput" rows="4" placeholder="Food hunting and sightseeing"></textarea>
+          </label>
+          <button class="primary wide" type="submit">Save trip</button>
+        </form>
+      </section>
+
+      <section class="panel list-panel" aria-labelledby="tripListTitle">
+        <div class="panel-heading">
+          <h2 id="tripListTitle">Trips</h2>
+          <button id="refreshTripsButton" type="button">Refresh</button>
+        </div>
+        <div id="tripList" class="trip-list"></div>
+      </section>
+
+      <section class="panel summary-panel" aria-labelledby="summaryTitle">
+        <div class="panel-heading">
+          <h2 id="summaryTitle">Planner Summary</h2>
+        </div>
+        <div id="summaryContent" class="summary-empty">Select a trip summary.</div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app/app.js"></script>
+  </body>
+</html>
