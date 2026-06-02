@@ -83,6 +83,8 @@ The interface supports:
 
 - register and login
 - create, read, update and delete trips
+- searchable country selection
+- destination suggestions filtered by selected country
 - generate a travel plan that combines saved trip data with weather and nearby points of interest
 - open Swagger documentation for API testing
 

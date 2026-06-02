@@ -55,11 +55,13 @@
           <input id="tripIdInput" type="hidden">
           <label>
             Destination
-            <input id="destinationInput" required placeholder="Penang">
+            <input id="destinationInput" required list="destinationOptions" placeholder="Start typing after country">
+            <datalist id="destinationOptions"></datalist>
           </label>
           <label>
             Country
-            <input id="countryInput" placeholder="Malaysia">
+            <input id="countryInput" list="countryOptions" placeholder="Malaysia">
+            <datalist id="countryOptions"></datalist>
           </label>
           <label>
             Start date

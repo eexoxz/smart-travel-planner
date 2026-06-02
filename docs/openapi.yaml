@@ -154,6 +154,27 @@ paths:
       responses:
         "200":
           description: Trip, current weather and attractions returned
+  /locations/destinations:
+    get:
+      security: []
+      summary: Search destination suggestions for the application form
+      description: Uses Open-Meteo geocoding and optionally filters results by selected country.
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          example: Pen
+        - in: query
+          name: country
+          required: false
+          schema:
+            type: string
+          example: Malaysia
+      responses:
+        "200":
+          description: Destination suggestions returned
 components:
   securitySchemes:
     bearerAuth:

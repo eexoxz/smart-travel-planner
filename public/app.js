@@ -17,7 +17,9 @@ const elements = {
   tripForm: document.getElementById('tripForm'),
   tripIdInput: document.getElementById('tripIdInput'),
   destinationInput: document.getElementById('destinationInput'),
+  destinationOptions: document.getElementById('destinationOptions'),
   countryInput: document.getElementById('countryInput'),
+  countryOptions: document.getElementById('countryOptions'),
   startDateInput: document.getElementById('startDateInput'),
   endDateInput: document.getElementById('endDateInput'),
   budgetInput: document.getElementById('budgetInput'),
@@ -31,6 +33,28 @@ const elements = {
   toast: document.getElementById('toast')
 };
 
+const countryCodes = [
+  'AF', 'AX', 'AL', 'DZ', 'AS', 'AD', 'AO', 'AI', 'AQ', 'AG', 'AR', 'AM', 'AW', 'AU', 'AT', 'AZ',
+  'BS', 'BH', 'BD', 'BB', 'BY', 'BE', 'BZ', 'BJ', 'BM', 'BT', 'BO', 'BQ', 'BA', 'BW', 'BV', 'BR',
+  'IO', 'BN', 'BG', 'BF', 'BI', 'CV', 'KH', 'CM', 'CA', 'KY', 'CF', 'TD', 'CL', 'CN', 'CX', 'CC',
+  'CO', 'KM', 'CG', 'CD', 'CK', 'CR', 'CI', 'HR', 'CU', 'CW', 'CY', 'CZ', 'DK', 'DJ', 'DM', 'DO',
+  'EC', 'EG', 'SV', 'GQ', 'ER', 'EE', 'SZ', 'ET', 'FK', 'FO', 'FJ', 'FI', 'FR', 'GF', 'PF', 'TF',
+  'GA', 'GM', 'GE', 'DE', 'GH', 'GI', 'GR', 'GL', 'GD', 'GP', 'GU', 'GT', 'GG', 'GN', 'GW', 'GY',
+  'HT', 'HM', 'VA', 'HN', 'HK', 'HU', 'IS', 'IN', 'ID', 'IR', 'IQ', 'IE', 'IM', 'IL', 'IT', 'JM',
+  'JP', 'JE', 'JO', 'KZ', 'KE', 'KI', 'KP', 'KR', 'KW', 'KG', 'LA', 'LV', 'LB', 'LS', 'LR', 'LY',
+  'LI', 'LT', 'LU', 'MO', 'MG', 'MW', 'MY', 'MV', 'ML', 'MT', 'MH', 'MQ', 'MR', 'MU', 'YT', 'MX',
+  'FM', 'MD', 'MC', 'MN', 'ME', 'MS', 'MA', 'MZ', 'MM', 'NA', 'NR', 'NP', 'NL', 'NC', 'NZ', 'NI',
+  'NE', 'NG', 'NU', 'NF', 'MK', 'MP', 'NO', 'OM', 'PK', 'PW', 'PS', 'PA', 'PG', 'PY', 'PE', 'PH',
+  'PN', 'PL', 'PT', 'PR', 'QA', 'RE', 'RO', 'RU', 'RW', 'BL', 'SH', 'KN', 'LC', 'MF', 'PM', 'VC',
+  'WS', 'SM', 'ST', 'SA', 'SN', 'RS', 'SC', 'SC', 'SL', 'SG', 'SX', 'SK', 'SI', 'SB', 'SO', 'ZA',
+  'GS', 'SS', 'ES', 'LK', 'SD', 'SR', 'SJ', 'SE', 'CH', 'SY', 'TW', 'TJ', 'TZ', 'TH', 'TL', 'TG',
+  'TK', 'TO', 'TT', 'TN', 'TR', 'TM', 'TC', 'TV', 'UG', 'UA', 'AE', 'GB', 'US', 'UM', 'UY', 'UZ',
+  'VU', 'VE', 'VN', 'VG', 'VI', 'WF', 'EH', 'YE', 'ZM', 'ZW'
+];
+
+const countryNames = buildCountryNames();
+let destinationSearchTimer;
+
 function setAuthMode(mode) {
   state.authMode = mode;
   elements.loginTab.classList.toggle('active', mode === 'login');
@@ -40,6 +64,7 @@ function setAuthMode(mode) {
 
 function setSessionStatus() {
   elements.sessionStatus.textContent = state.token ? 'Signed in' : 'Signed out';
+  elements.logoutButton.hidden = !state.token;
 }
 
 async function apiRequest(path, options = {}) {
@@ -68,6 +93,19 @@ async function apiRequest(path, options = {}) {
   }
 
   return payload;
+}
+
+function buildCountryNames() {
+  const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+
+  return [...new Set(countryCodes.map((code) => displayNames.of(code)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function populateCountries() {
+  elements.countryOptions.innerHTML = countryNames
+    .map((country) => `<option value="${escapeHtml(country)}"></option>`)
+    .join('');
 }
 
 async function handleAuthSubmit(event) {
@@ -147,6 +185,45 @@ async function loadTrips() {
   renderTrips();
 }
 
+function scheduleDestinationSearch() {
+  updateDestinationPlaceholder();
+  window.clearTimeout(destinationSearchTimer);
+  destinationSearchTimer = window.setTimeout(loadDestinationSuggestions, 350);
+}
+
+function updateDestinationPlaceholder() {
+  const country = elements.countryInput.value.trim();
+  elements.destinationInput.placeholder = country ? `Type a city/place in ${country}` : 'Start typing after country';
+}
+
+async function loadDestinationSuggestions() {
+  const query = elements.destinationInput.value.trim();
+  const country = elements.countryInput.value.trim();
+
+  if (query.length < 2) {
+    elements.destinationOptions.innerHTML = '';
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({ name: query });
+
+    if (country) {
+      params.set('country', country);
+    }
+
+    const payload = await apiRequest(`/locations/destinations?${params}`);
+    elements.destinationOptions.innerHTML = payload.data
+      .map((place) => {
+        const label = [place.region, place.country].filter(Boolean).join(', ');
+        return `<option value="${escapeHtml(place.name)}" label="${escapeHtml(label)}"></option>`;
+      })
+      .join('');
+  } catch (error) {
+    elements.destinationOptions.innerHTML = '';
+  }
+}
+
 function renderTrips() {
   if (!state.trips.length) {
     elements.tripList.innerHTML = '<div class="summary-empty">No trips saved.</div>';
@@ -158,7 +235,7 @@ function renderTrips() {
       <header>
         <div>
           <h3>${escapeHtml(trip.destination)}</h3>
-          <p>${escapeHtml(trip.country || 'No country')} · ${escapeHtml(trip.startDate)}${trip.endDate ? ` to ${escapeHtml(trip.endDate)}` : ''}</p>
+          <p>${escapeHtml(trip.country || 'No country')} - ${escapeHtml(trip.startDate)}${trip.endDate ? ` to ${escapeHtml(trip.endDate)}` : ''}</p>
         </div>
         <span class="status ${escapeHtml(trip.status)}">${escapeHtml(trip.status)}</span>
       </header>
@@ -234,7 +311,7 @@ function renderSummary(data) {
       </section>
       <section>
         <h4>Weather Advice</h4>
-        <p>${escapeHtml(weather.description)} · ${escapeHtml(plan.weatherAdvice)}</p>
+        <p>${escapeHtml(weather.description)} - ${escapeHtml(plan.weatherAdvice)}</p>
       </section>
       <section>
         <h4>Suggested Nearby Places</h4>
@@ -306,6 +383,8 @@ function attachHandlers() {
   elements.refreshTripsButton.addEventListener('click', safeHandler(loadTrips));
   elements.resetTripFormButton.addEventListener('click', resetTripForm);
   elements.logoutButton.addEventListener('click', logout);
+  elements.countryInput.addEventListener('input', scheduleDestinationSearch);
+  elements.destinationInput.addEventListener('input', scheduleDestinationSearch);
 }
 
 function safeHandler(handler) {
@@ -319,6 +398,7 @@ function safeHandler(handler) {
 }
 
 attachHandlers();
+populateCountries();
 setAuthMode('login');
 setSessionStatus();
 loadTrips().catch(() => undefined);

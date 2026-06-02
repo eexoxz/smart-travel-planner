@@ -1,15 +1,18 @@
 :root {
-  --ink: #18212f;
-  --muted: #667085;
-  --line: #d8dee8;
-  --panel: #ffffff;
-  --page: #f4f7fb;
-  --primary: #176b87;
-  --primary-strong: #0f4f67;
-  --green: #2f7d4f;
-  --amber: #a96b12;
+  --ink: #171018;
+  --muted: #6f6471;
+  --line: #ead7e5;
+  --panel: #fffafd;
+  --page: #fff4fa;
+  --primary: #ff2f86;
+  --primary-strong: #d91567;
+  --black: #0d0b10;
+  --pink-soft: #ffe4f1;
+  --pink-line: #ff9bc8;
+  --green: #247a52;
+  --amber: #a9620a;
   --red: #b42318;
-  --shadow: 0 12px 32px rgba(27, 39, 59, 0.12);
+  --shadow: 0 18px 42px rgba(69, 19, 45, 0.14);
 }
 
 * {
@@ -18,9 +21,12 @@
 
 body {
   margin: 0;
-  background: var(--page);
+  background:
+    linear-gradient(135deg, rgba(255, 47, 134, 0.08), transparent 34%),
+    linear-gradient(315deg, rgba(13, 11, 16, 0.08), transparent 28%),
+    var(--page);
   color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", "Trebuchet MS", Arial, Helvetica, sans-serif;
 }
 
 button,
@@ -49,14 +55,16 @@ button:hover {
   gap: 24px;
   align-items: center;
   padding: 22px 32px;
-  background: #101828;
+  background: var(--black);
   color: #fff;
+  border-bottom: 4px solid var(--primary);
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 30px;
   line-height: 1.2;
+  letter-spacing: 0;
 }
 
 .topbar p {
@@ -77,8 +85,8 @@ button:hover {
   border-radius: 6px;
   color: #fff;
   text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 47, 134, 0.46);
+  background: rgba(255, 47, 134, 0.14);
 }
 
 .layout {
@@ -112,13 +120,14 @@ button:hover {
 
 .panel-heading h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
+  color: var(--black);
 }
 
 .segmented {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  border: 1px solid var(--line);
+  border: 1px solid var(--pink-line);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -165,6 +174,14 @@ textarea {
   background: #fff;
 }
 
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(255, 47, 134, 0.14);
+  outline: none;
+}
+
 textarea {
   resize: vertical;
 }
@@ -195,6 +212,7 @@ textarea {
   padding: 14px;
   display: grid;
   gap: 12px;
+  background: #fff;
 }
 
 .trip-card header {
@@ -263,7 +281,7 @@ textarea {
 .summary-block {
   border-left: 4px solid var(--primary);
   padding: 10px 12px;
-  background: #f7fbfd;
+  background: var(--pink-soft);
 }
 
 .summary-grid {
@@ -276,11 +294,13 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
+  background: #fff;
 }
 
 .metric strong {
   display: block;
   font-size: 20px;
+  color: var(--primary-strong);
 }
 
 .attraction-list {
@@ -296,7 +316,7 @@ textarea {
   padding: 12px 14px;
   border-radius: 8px;
   color: #fff;
-  background: #101828;
+  background: var(--black);
   box-shadow: var(--shadow);
   transform: translateY(120%);
   transition: transform 180ms ease;
