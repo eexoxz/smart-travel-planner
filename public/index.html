@@ -54,14 +54,14 @@
         <form id="tripForm" class="trip-grid">
           <input id="tripIdInput" type="hidden">
           <label>
-            Destination
-            <input id="destinationInput" required list="destinationOptions" placeholder="Start typing after country">
-            <datalist id="destinationOptions"></datalist>
-          </label>
-          <label>
             Country
             <input id="countryInput" list="countryOptions" placeholder="Malaysia">
             <datalist id="countryOptions"></datalist>
+          </label>
+          <label>
+            Destination
+            <input id="destinationInput" required list="destinationOptions" placeholder="Pick a country first">
+            <datalist id="destinationOptions"></datalist>
           </label>
           <label>
             Start date
@@ -83,7 +83,20 @@
               <option value="cancelled">Cancelled</option>
             </select>
           </label>
-          <label class="wide">
+          <fieldset class="wide preference-field">
+            <legend>Preferences</legend>
+            <div class="preference-grid">
+              <label><input type="checkbox" name="preference" value="food" checked> Food</label>
+              <label><input type="checkbox" name="preference" value="culture" checked> Culture</label>
+              <label><input type="checkbox" name="preference" value="beach" checked> Beach</label>
+              <label><input type="checkbox" name="preference" value="museums"> Museums</label>
+              <label><input type="checkbox" name="preference" value="shopping"> Shopping</label>
+              <label><input type="checkbox" name="preference" value="nature"> Nature</label>
+              <label><input type="checkbox" name="preference" value="nightlife"> Nightlife</label>
+              <label><input type="checkbox" name="preference" value="family"> Family</label>
+            </div>
+          </fieldset>
+          <label class="wide manual-preferences">
             Preferences
             <input id="tagsInput" placeholder="food, culture, beach">
           </label>

@@ -162,6 +162,48 @@ label {
   font-weight: 700;
 }
 
+.manual-preferences {
+  display: none;
+}
+
+.preference-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.preference-field legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.preference-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.preference-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--pink-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.preference-grid input {
+  width: 16px;
+  min-height: 16px;
+  accent-color: var(--primary);
+}
+
 input,
 select,
 textarea {
@@ -343,7 +385,8 @@ textarea {
   }
 
   .trip-grid,
-  .summary-grid {
+  .summary-grid,
+  .preference-grid {
     grid-template-columns: 1fr;
   }
 }

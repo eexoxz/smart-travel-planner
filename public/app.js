@@ -53,6 +53,22 @@ const countryCodes = [
 ];
 
 const countryNames = buildCountryNames();
+const popularDestinations = {
+  Australia: ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Gold Coast', 'Cairns', 'Adelaide'],
+  Austria: ['Vienna', 'Salzburg', 'Innsbruck', 'Hallstatt', 'Graz', 'Linz'],
+  China: ['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Chengdu', 'Xi’an', 'Hangzhou'],
+  France: ['Paris', 'Nice', 'Lyon', 'Marseille', 'Bordeaux', 'Strasbourg'],
+  Indonesia: ['Bali', 'Jakarta', 'Yogyakarta', 'Bandung', 'Lombok', 'Surabaya'],
+  Italy: ['Rome', 'Florence', 'Venice', 'Milan', 'Naples', 'Pisa'],
+  Japan: ['Tokyo', 'Kyoto', 'Osaka', 'Sapporo', 'Nara', 'Fukuoka', 'Okinawa'],
+  Malaysia: ['Penang', 'Kuala Lumpur', 'Langkawi', 'Malacca', 'Kota Kinabalu', 'Ipoh', 'Kuching'],
+  Singapore: ['Singapore', 'Sentosa', 'Marina Bay', 'Orchard Road', 'Chinatown'],
+  'South Korea': ['Seoul', 'Busan', 'Jeju City', 'Incheon', 'Gyeongju', 'Daegu'],
+  Spain: ['Madrid', 'Barcelona', 'Seville', 'Valencia', 'Granada', 'Malaga'],
+  Thailand: ['Bangkok', 'Phuket', 'Chiang Mai', 'Krabi', 'Pattaya', 'Ayutthaya'],
+  'United Kingdom': ['London', 'Edinburgh', 'Manchester', 'Bath', 'Liverpool', 'York'],
+  'United States': ['New York', 'Los Angeles', 'San Francisco', 'Washington', 'Las Vegas', 'Chicago', 'Miami']
+};
 let destinationSearchTimer;
 
 function setAuthMode(mode) {
@@ -108,6 +124,15 @@ function populateCountries() {
     .join('');
 }
 
+function populatePopularDestinations() {
+  const country = elements.countryInput.value.trim();
+  const destinations = popularDestinations[country] || [];
+
+  elements.destinationOptions.innerHTML = destinations
+    .map((destination) => `<option value="${escapeHtml(destination)}" label="Popular in ${escapeHtml(country)}"></option>`)
+    .join('');
+}
+
 async function handleAuthSubmit(event) {
   event.preventDefault();
 
@@ -134,10 +159,7 @@ async function handleAuthSubmit(event) {
 }
 
 function buildTripPayload() {
-  const tags = elements.tagsInput.value
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+  const tags = getSelectedPreferences();
 
   const payload = {
     destination: elements.destinationInput.value.trim(),
@@ -187,6 +209,7 @@ async function loadTrips() {
 
 function scheduleDestinationSearch() {
   updateDestinationPlaceholder();
+  populatePopularDestinations();
   window.clearTimeout(destinationSearchTimer);
   destinationSearchTimer = window.setTimeout(loadDestinationSuggestions, 350);
 }
@@ -201,7 +224,7 @@ async function loadDestinationSuggestions() {
   const country = elements.countryInput.value.trim();
 
   if (query.length < 2) {
-    elements.destinationOptions.innerHTML = '';
+    populatePopularDestinations();
     return;
   }
 
@@ -340,13 +363,31 @@ function fillTripForm(trip) {
   elements.budgetInput.value = trip.budgetAmount || '';
   elements.statusInput.value = trip.status;
   elements.tagsInput.value = trip.preferenceTags.join(', ');
+  setSelectedPreferences(trip.preferenceTags);
   elements.notesInput.value = trip.notes || '';
+  populatePopularDestinations();
 }
 
 function resetTripForm() {
   elements.tripForm.reset();
   elements.tripIdInput.value = '';
   elements.statusInput.value = 'planned';
+  setSelectedPreferences(['food', 'culture', 'beach']);
+  elements.destinationOptions.innerHTML = '';
+  updateDestinationPlaceholder();
+}
+
+function getSelectedPreferences() {
+  return Array.from(document.querySelectorAll('input[name="preference"]:checked'))
+    .map((input) => input.value);
+}
+
+function setSelectedPreferences(tags) {
+  const selected = new Set(tags);
+  document.querySelectorAll('input[name="preference"]').forEach((input) => {
+    input.checked = selected.has(input.value);
+  });
+  elements.tagsInput.value = Array.from(selected).join(', ');
 }
 
 function logout() {
@@ -385,6 +426,7 @@ function attachHandlers() {
   elements.logoutButton.addEventListener('click', logout);
   elements.countryInput.addEventListener('input', scheduleDestinationSearch);
   elements.destinationInput.addEventListener('input', scheduleDestinationSearch);
+  elements.destinationInput.addEventListener('focus', populatePopularDestinations);
 }
 
 function safeHandler(handler) {
