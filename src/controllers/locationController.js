@@ -10,6 +10,28 @@ async function searchDestinations(req, res) {
   });
 }
 
+async function getStates(req, res) {
+  const states = await locationService.getStates(req.query.country);
+
+  res.status(200).json({
+    success: true,
+    count: states.length,
+    data: states
+  });
+}
+
+async function getCities(req, res) {
+  const cities = await locationService.getCities(req.query.country, req.query.state);
+
+  res.status(200).json({
+    success: true,
+    count: cities.length,
+    data: cities
+  });
+}
+
 module.exports = {
-  searchDestinations
+  searchDestinations,
+  getStates,
+  getCities
 };

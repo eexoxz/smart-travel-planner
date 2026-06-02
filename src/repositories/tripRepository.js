@@ -8,11 +8,13 @@ function mapTrip(row) {
     userId: row.user_id,
     destination: row.destination,
     country: row.country,
+    region: row.region,
     startDate: row.start_date,
     endDate: row.end_date,
     notes: row.notes,
     preferenceTags: row.preference_tags || [],
     budgetAmount: row.budget_amount,
+    budgetCurrency: row.budget_currency,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -27,11 +29,13 @@ function create(userId, data) {
     user_id: Number(userId),
     destination: data.destination,
     country: data.country || null,
+    region: data.region || null,
     start_date: data.startDate,
     end_date: data.endDate || null,
     notes: data.notes || null,
     preference_tags: data.preferenceTags || [],
     budget_amount: data.budgetAmount || null,
+    budget_currency: data.budgetCurrency || null,
     status: data.status || 'planned',
     created_at: now,
     updated_at: now
@@ -76,11 +80,13 @@ function update(id, userId, data) {
   const next = {
     destination: data.destination ?? existing.destination,
     country: data.country ?? existing.country,
+    region: data.region ?? existing.region,
     startDate: data.startDate ?? existing.startDate,
     endDate: data.endDate ?? existing.endDate,
     notes: data.notes ?? existing.notes,
     preferenceTags: data.preferenceTags ?? existing.preferenceTags,
     budgetAmount: data.budgetAmount ?? existing.budgetAmount,
+    budgetCurrency: data.budgetCurrency ?? existing.budgetCurrency,
     status: data.status ?? existing.status
   };
 
@@ -93,11 +99,13 @@ function update(id, userId, data) {
     ...database.trips[index],
     destination: next.destination,
     country: next.country,
+    region: next.region,
     start_date: next.startDate,
     end_date: next.endDate,
     notes: next.notes,
     preference_tags: next.preferenceTags || [],
     budget_amount: next.budgetAmount,
+    budget_currency: next.budgetCurrency,
     status: next.status,
     updated_at: getTimestamp()
   };

@@ -23,6 +23,11 @@ function updateTrip(userId, tripId, data) {
   const existingTrip = getTrip(userId, tripId);
   const nextStartDate = data.startDate ?? existingTrip.startDate;
   const nextEndDate = data.endDate ?? existingTrip.endDate;
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (nextStartDate < today) {
+    throw new AppError('startDate cannot be in the past', 400);
+  }
 
   if (nextEndDate && nextEndDate < nextStartDate) {
     throw new AppError('endDate must be on or after startDate', 400);

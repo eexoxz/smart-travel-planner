@@ -92,7 +92,9 @@ function buildOverview(trip) {
     ? `Preferences: ${trip.preferenceTags.join(', ')}.`
     : 'No specific preferences were saved.';
 
-  return `${trip.destination}${trip.country ? `, ${trip.country}` : ''} trip ${dates}. ${preferences}`;
+  const location = [trip.destination, trip.region, trip.country].filter(Boolean).join(', ');
+
+  return `${location} trip ${dates}. ${preferences}`;
 }
 
 function buildWeatherAdvice(weather) {
@@ -136,7 +138,10 @@ function buildPreparationTips(trip, weather) {
   }
 
   if (trip.budgetAmount) {
-    tips.push(`Keep the plan within the saved budget of ${trip.budgetAmount}.`);
+    const budget = trip.budgetCurrency
+      ? `${trip.budgetAmount} ${trip.budgetCurrency}`
+      : String(trip.budgetAmount);
+    tips.push(`Keep the plan within the saved budget of ${budget}.`);
   }
 
   return tips;

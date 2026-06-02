@@ -84,9 +84,10 @@ The interface supports:
 - register and login
 - create, read, update and delete trips
 - searchable country selection
-- popular destination suggestions after country selection
-- live destination suggestions filtered by selected country
+- country to region/state to city dropdown flow
+- city options fetched from a public country-state-city API
 - selectable travel preference chips used by the generated plan
+- budget amount with currency
 - generate a travel plan that combines saved trip data with weather and nearby points of interest
 - open Swagger documentation for API testing
 
@@ -117,11 +118,13 @@ In Swagger's **Authorize** popup, paste only the token value without quotation m
 {
   "destination": "Kyoto",
   "country": "Japan",
+  "region": "Kansai",
   "startDate": "2026-07-10",
   "endDate": "2026-07-16",
   "notes": "Prefer cultural sites, local food and train-friendly routes.",
   "preferenceTags": ["culture", "food", "museums"],
   "budgetAmount": 2500,
+  "budgetCurrency": "JPY",
   "status": "planned"
 }
 ```

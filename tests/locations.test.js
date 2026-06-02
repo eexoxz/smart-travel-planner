@@ -38,12 +38,41 @@ afterAll(() => {
   jest.restoreAllMocks();
 });
 
-test('filters destination suggestions by selected country', async () => {
+test('returns states for a selected country', async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      error: false,
+      data: {
+        states: [
+          { name: 'Penang', state_code: '07' },
+          { name: 'Selangor', state_code: '10' }
+        ]
+      }
+    })
+  });
+
   const response = await request(app)
-    .get('/api/v1/locations/destinations?name=Pen&country=Malaysia');
+    .get('/api/v1/locations/states?country=Malaysia');
 
   expect(response.status).toBe(200);
-  expect(response.body.count).toBe(1);
+  expect(response.body.count).toBe(2);
   expect(response.body.data[0].name).toBe('Penang');
-  expect(response.body.data[0].country).toBe('Malaysia');
+});
+
+test('returns cities for a selected country and state', async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      error: false,
+      data: ['George Town', 'Bayan Lepas']
+    })
+  });
+
+  const response = await request(app)
+    .get('/api/v1/locations/cities?country=Malaysia&state=Penang');
+
+  expect(response.status).toBe(200);
+  expect(response.body.count).toBe(2);
+  expect(response.body.data[0].name).toBe('George Town');
 });

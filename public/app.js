@@ -17,12 +17,12 @@ const elements = {
   tripForm: document.getElementById('tripForm'),
   tripIdInput: document.getElementById('tripIdInput'),
   destinationInput: document.getElementById('destinationInput'),
-  destinationOptions: document.getElementById('destinationOptions'),
   countryInput: document.getElementById('countryInput'),
-  countryOptions: document.getElementById('countryOptions'),
+  regionInput: document.getElementById('regionInput'),
   startDateInput: document.getElementById('startDateInput'),
   endDateInput: document.getElementById('endDateInput'),
   budgetInput: document.getElementById('budgetInput'),
+  currencyInput: document.getElementById('currencyInput'),
   statusInput: document.getElementById('statusInput'),
   tagsInput: document.getElementById('tagsInput'),
   notesInput: document.getElementById('notesInput'),
@@ -53,23 +53,22 @@ const countryCodes = [
 ];
 
 const countryNames = buildCountryNames();
-const popularDestinations = {
-  Australia: ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Gold Coast', 'Cairns', 'Adelaide'],
-  Austria: ['Vienna', 'Salzburg', 'Innsbruck', 'Hallstatt', 'Graz', 'Linz'],
-  China: ['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Chengdu', 'Xi’an', 'Hangzhou'],
-  France: ['Paris', 'Nice', 'Lyon', 'Marseille', 'Bordeaux', 'Strasbourg'],
-  Indonesia: ['Bali', 'Jakarta', 'Yogyakarta', 'Bandung', 'Lombok', 'Surabaya'],
-  Italy: ['Rome', 'Florence', 'Venice', 'Milan', 'Naples', 'Pisa'],
-  Japan: ['Tokyo', 'Kyoto', 'Osaka', 'Sapporo', 'Nara', 'Fukuoka', 'Okinawa'],
-  Malaysia: ['Penang', 'Kuala Lumpur', 'Langkawi', 'Malacca', 'Kota Kinabalu', 'Ipoh', 'Kuching'],
-  Singapore: ['Singapore', 'Sentosa', 'Marina Bay', 'Orchard Road', 'Chinatown'],
-  'South Korea': ['Seoul', 'Busan', 'Jeju City', 'Incheon', 'Gyeongju', 'Daegu'],
-  Spain: ['Madrid', 'Barcelona', 'Seville', 'Valencia', 'Granada', 'Malaga'],
-  Thailand: ['Bangkok', 'Phuket', 'Chiang Mai', 'Krabi', 'Pattaya', 'Ayutthaya'],
-  'United Kingdom': ['London', 'Edinburgh', 'Manchester', 'Bath', 'Liverpool', 'York'],
-  'United States': ['New York', 'Los Angeles', 'San Francisco', 'Washington', 'Las Vegas', 'Chicago', 'Miami']
+const countryCurrency = {
+  Australia: 'AUD',
+  Austria: 'EUR',
+  China: 'CNY',
+  France: 'EUR',
+  Indonesia: 'IDR',
+  Italy: 'EUR',
+  Japan: 'JPY',
+  Malaysia: 'MYR',
+  Singapore: 'SGD',
+  'South Korea': 'KRW',
+  Spain: 'EUR',
+  Thailand: 'THB',
+  'United Kingdom': 'GBP',
+  'United States': 'USD'
 };
-let destinationSearchTimer;
 
 function setAuthMode(mode) {
   state.authMode = mode;
@@ -119,17 +118,8 @@ function buildCountryNames() {
 }
 
 function populateCountries() {
-  elements.countryOptions.innerHTML = countryNames
-    .map((country) => `<option value="${escapeHtml(country)}"></option>`)
-    .join('');
-}
-
-function populatePopularDestinations() {
-  const country = elements.countryInput.value.trim();
-  const destinations = popularDestinations[country] || [];
-
-  elements.destinationOptions.innerHTML = destinations
-    .map((destination) => `<option value="${escapeHtml(destination)}" label="Popular in ${escapeHtml(country)}"></option>`)
+  elements.countryInput.innerHTML = '<option value="">Choose country</option>' + countryNames
+    .map((country) => `<option value="${escapeHtml(country)}">${escapeHtml(country)}</option>`)
     .join('');
 }
 
@@ -164,6 +154,7 @@ function buildTripPayload() {
   const payload = {
     destination: elements.destinationInput.value.trim(),
     country: elements.countryInput.value.trim() || undefined,
+    region: elements.regionInput.value.trim() || undefined,
     startDate: elements.startDateInput.value,
     endDate: elements.endDateInput.value || undefined,
     notes: elements.notesInput.value.trim() || undefined,
@@ -173,6 +164,7 @@ function buildTripPayload() {
 
   if (elements.budgetInput.value) {
     payload.budgetAmount = Number(elements.budgetInput.value);
+    payload.budgetCurrency = elements.currencyInput.value;
   }
 
   return payload;
@@ -207,43 +199,68 @@ async function loadTrips() {
   renderTrips();
 }
 
-function scheduleDestinationSearch() {
-  updateDestinationPlaceholder();
-  populatePopularDestinations();
-  window.clearTimeout(destinationSearchTimer);
-  destinationSearchTimer = window.setTimeout(loadDestinationSuggestions, 350);
-}
-
-function updateDestinationPlaceholder() {
+async function handleCountryChange() {
   const country = elements.countryInput.value.trim();
-  elements.destinationInput.placeholder = country ? `Type a city/place in ${country}` : 'Start typing after country';
-}
+  elements.regionInput.innerHTML = '<option value="">Loading regions...</option>';
+  elements.regionInput.disabled = true;
+  elements.destinationInput.innerHTML = '<option value="">Choose region first</option>';
+  elements.destinationInput.disabled = true;
+  elements.currencyInput.value = countryCurrency[country] || 'USD';
 
-async function loadDestinationSuggestions() {
-  const query = elements.destinationInput.value.trim();
-  const country = elements.countryInput.value.trim();
-
-  if (query.length < 2) {
-    populatePopularDestinations();
+  if (!country) {
+    elements.regionInput.innerHTML = '<option value="">Choose country first</option>';
     return;
   }
 
   try {
-    const params = new URLSearchParams({ name: query });
+    const params = new URLSearchParams({ country });
+    const payload = await apiRequest(`/locations/states?${params}`);
 
-    if (country) {
-      params.set('country', country);
+    if (!payload.data.length) {
+      elements.regionInput.innerHTML = '<option value="">No region required</option>';
+      await loadCities('');
+      return;
     }
 
-    const payload = await apiRequest(`/locations/destinations?${params}`);
-    elements.destinationOptions.innerHTML = payload.data
-      .map((place) => {
-        const label = [place.region, place.country].filter(Boolean).join(', ');
-        return `<option value="${escapeHtml(place.name)}" label="${escapeHtml(label)}"></option>`;
-      })
+    elements.regionInput.innerHTML = '<option value="">Choose region/state</option>' + payload.data
+      .map((region) => `<option value="${escapeHtml(region.name)}">${escapeHtml(region.name)}</option>`)
       .join('');
+    elements.regionInput.disabled = false;
   } catch (error) {
-    elements.destinationOptions.innerHTML = '';
+    elements.regionInput.innerHTML = '<option value="">Unable to load regions</option>';
+    showToast(error.message);
+  }
+}
+
+async function handleRegionChange() {
+  await loadCities(elements.regionInput.value.trim());
+}
+
+async function loadCities(region) {
+  const country = elements.countryInput.value.trim();
+  elements.destinationInput.innerHTML = '<option value="">Loading destinations...</option>';
+  elements.destinationInput.disabled = true;
+
+  if (!country) {
+    elements.destinationInput.innerHTML = '<option value="">Choose country first</option>';
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({ country });
+
+    if (region) {
+      params.set('state', region);
+    }
+
+    const payload = await apiRequest(`/locations/cities?${params}`);
+    elements.destinationInput.innerHTML = '<option value="">Choose destination/city</option>' + payload.data
+      .map((city) => `<option value="${escapeHtml(city.name)}">${escapeHtml(city.name)}</option>`)
+      .join('');
+    elements.destinationInput.disabled = false;
+  } catch (error) {
+    elements.destinationInput.innerHTML = '<option value="">Unable to load destinations</option>';
+    showToast(error.message);
   }
 }
 
@@ -284,7 +301,7 @@ async function handleTripListClick(event) {
 
   if (action === 'edit') {
     const trip = state.trips.find((item) => item.id === tripId);
-    fillTripForm(trip);
+    await fillTripForm(trip);
   }
 
   if (action === 'delete') {
@@ -324,7 +341,7 @@ function renderSummary(data) {
         <p>${escapeHtml(data.recommendation.summary)}</p>
       </div>
       <div class="summary-grid">
-        <div class="metric"><span>Temperature</span><strong>${weather.temperatureCelsius}°C</strong></div>
+        <div class="metric"><span>Temperature</span><strong>${weather.temperatureCelsius} C</strong></div>
         <div class="metric"><span>Humidity</span><strong>${weather.humidityPercent}%</strong></div>
         <div class="metric"><span>Wind</span><strong>${weather.windSpeedKmh} km/h</strong></div>
       </div>
@@ -354,10 +371,14 @@ function renderSummary(data) {
   `;
 }
 
-function fillTripForm(trip) {
+async function fillTripForm(trip) {
   elements.tripIdInput.value = trip.id;
-  elements.destinationInput.value = trip.destination;
   elements.countryInput.value = trip.country || '';
+  elements.currencyInput.value = trip.budgetCurrency || countryCurrency[trip.country] || 'USD';
+  await handleCountryChange();
+  elements.regionInput.value = trip.region || '';
+  await handleRegionChange();
+  elements.destinationInput.value = trip.destination;
   elements.startDateInput.value = trip.startDate;
   elements.endDateInput.value = trip.endDate || '';
   elements.budgetInput.value = trip.budgetAmount || '';
@@ -365,16 +386,36 @@ function fillTripForm(trip) {
   elements.tagsInput.value = trip.preferenceTags.join(', ');
   setSelectedPreferences(trip.preferenceTags);
   elements.notesInput.value = trip.notes || '';
-  populatePopularDestinations();
+  updateDateBounds();
 }
 
 function resetTripForm() {
   elements.tripForm.reset();
   elements.tripIdInput.value = '';
   elements.statusInput.value = 'planned';
+  elements.currencyInput.value = 'MYR';
+  elements.regionInput.innerHTML = '<option value="">Choose country first</option>';
+  elements.regionInput.disabled = true;
+  elements.destinationInput.innerHTML = '<option value="">Choose region first</option>';
+  elements.destinationInput.disabled = true;
   setSelectedPreferences(['food', 'culture', 'beach']);
-  elements.destinationOptions.innerHTML = '';
-  updateDestinationPlaceholder();
+  updateDateBounds();
+}
+
+function updateDateBounds() {
+  const today = new Date().toISOString().slice(0, 10);
+  elements.startDateInput.min = today;
+
+  if (elements.startDateInput.value && elements.startDateInput.value < today) {
+    elements.startDateInput.value = today;
+  }
+
+  const endMin = elements.startDateInput.value || today;
+  elements.endDateInput.min = endMin;
+
+  if (elements.endDateInput.value && elements.endDateInput.value < endMin) {
+    elements.endDateInput.value = '';
+  }
 }
 
 function getSelectedPreferences() {
@@ -424,9 +465,9 @@ function attachHandlers() {
   elements.refreshTripsButton.addEventListener('click', safeHandler(loadTrips));
   elements.resetTripFormButton.addEventListener('click', resetTripForm);
   elements.logoutButton.addEventListener('click', logout);
-  elements.countryInput.addEventListener('input', scheduleDestinationSearch);
-  elements.destinationInput.addEventListener('input', scheduleDestinationSearch);
-  elements.destinationInput.addEventListener('focus', populatePopularDestinations);
+  elements.countryInput.addEventListener('change', safeHandler(handleCountryChange));
+  elements.regionInput.addEventListener('change', safeHandler(handleRegionChange));
+  elements.startDateInput.addEventListener('change', updateDateBounds);
 }
 
 function safeHandler(handler) {
@@ -441,6 +482,9 @@ function safeHandler(handler) {
 
 attachHandlers();
 populateCountries();
+updateDateBounds();
 setAuthMode('login');
 setSessionStatus();
 loadTrips().catch(() => undefined);
+
+

@@ -175,6 +175,40 @@ paths:
       responses:
         "200":
           description: Destination suggestions returned
+  /locations/states:
+    get:
+      security: []
+      summary: List states or regions for a selected country
+      parameters:
+        - in: query
+          name: country
+          required: true
+          schema:
+            type: string
+          example: Malaysia
+      responses:
+        "200":
+          description: States or regions returned
+  /locations/cities:
+    get:
+      security: []
+      summary: List cities for a selected country and optional state
+      parameters:
+        - in: query
+          name: country
+          required: true
+          schema:
+            type: string
+          example: Malaysia
+        - in: query
+          name: state
+          required: false
+          schema:
+            type: string
+          example: Penang
+      responses:
+        "200":
+          description: Cities returned
 components:
   securitySchemes:
     bearerAuth:
@@ -224,6 +258,9 @@ components:
         country:
           type: string
           example: Japan
+        region:
+          type: string
+          example: Kansai
         startDate:
           type: string
           format: date
@@ -243,6 +280,9 @@ components:
         budgetAmount:
           type: number
           example: 2500
+        budgetCurrency:
+          type: string
+          example: JPY
         status:
           type: string
           enum: [planned, visited, cancelled]
@@ -256,6 +296,9 @@ components:
         country:
           type: string
           example: Japan
+        region:
+          type: string
+          example: Kansai
         startDate:
           type: string
           format: date
@@ -275,6 +318,9 @@ components:
         budgetAmount:
           type: number
           example: 2500
+        budgetCurrency:
+          type: string
+          example: JPY
         status:
           type: string
           enum: [planned, visited, cancelled]

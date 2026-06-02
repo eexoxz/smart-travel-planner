@@ -216,6 +216,17 @@ textarea {
   background: #fff;
 }
 
+.inline-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 8px;
+}
+
+select:disabled {
+  color: #8a7f88;
+  background: #f7eef4;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -386,7 +397,8 @@ textarea {
 
   .trip-grid,
   .summary-grid,
-  .preference-grid {
+  .preference-grid,
+  .inline-fields {
     grid-template-columns: 1fr;
   }
 }

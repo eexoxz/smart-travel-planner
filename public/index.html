@@ -55,13 +55,21 @@
           <input id="tripIdInput" type="hidden">
           <label>
             Country
-            <input id="countryInput" list="countryOptions" placeholder="Malaysia">
-            <datalist id="countryOptions"></datalist>
+            <select id="countryInput" required>
+              <option value="">Choose country</option>
+            </select>
           </label>
           <label>
-            Destination
-            <input id="destinationInput" required list="destinationOptions" placeholder="Pick a country first">
-            <datalist id="destinationOptions"></datalist>
+            Region / state
+            <select id="regionInput" disabled>
+              <option value="">Choose country first</option>
+            </select>
+          </label>
+          <label>
+            Destination / city
+            <select id="destinationInput" required disabled>
+              <option value="">Choose region first</option>
+            </select>
           </label>
           <label>
             Start date
@@ -73,7 +81,22 @@
           </label>
           <label>
             Budget
-            <input id="budgetInput" type="number" min="1" step="1" placeholder="1200">
+            <div class="inline-fields">
+              <input id="budgetInput" type="number" min="1" step="1" placeholder="1200">
+              <select id="currencyInput" aria-label="Budget currency">
+                <option value="MYR">MYR</option>
+                <option value="USD">USD</option>
+                <option value="KRW">KRW</option>
+                <option value="JPY">JPY</option>
+                <option value="SGD">SGD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="AUD">AUD</option>
+                <option value="THB">THB</option>
+                <option value="CNY">CNY</option>
+                <option value="IDR">IDR</option>
+              </select>
+            </div>
           </label>
           <label>
             Status

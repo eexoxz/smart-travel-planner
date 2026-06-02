@@ -28,18 +28,27 @@ const loginSchema = z.object({
 const tripFields = {
   destination: z.string().trim().min(2).max(120),
   country: z.string().trim().max(80).optional(),
+  region: z.string().trim().max(120).optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format'),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD format').optional(),
   notes: z.string().trim().max(1000).optional(),
   preferenceTags: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
   budgetAmount: z.number().positive().optional(),
+  budgetCurrency: z.string().trim().length(3).optional(),
   status: z.enum(['planned', 'visited', 'cancelled']).default('planned')
 };
 
-const tripBody = z.object(tripFields).refine((data) => !data.endDate || data.endDate >= data.startDate, {
-  path: ['endDate'],
-  message: 'endDate must be on or after startDate'
-});
+const today = () => new Date().toISOString().slice(0, 10);
+
+const tripBody = z.object(tripFields)
+  .refine((data) => data.startDate >= today(), {
+    path: ['startDate'],
+    message: 'startDate cannot be in the past'
+  })
+  .refine((data) => !data.endDate || data.endDate >= data.startDate, {
+    path: ['endDate'],
+    message: 'endDate must be on or after startDate'
+  });
 
 const tripUpdateBody = z.object(tripFields).partial()
   .refine((data) => Object.keys(data).length > 0, {
@@ -48,6 +57,10 @@ const tripUpdateBody = z.object(tripFields).partial()
   .refine((data) => !data.startDate || !data.endDate || data.endDate >= data.startDate, {
     path: ['endDate'],
     message: 'endDate must be on or after startDate'
+  })
+  .refine((data) => !data.startDate || data.startDate >= today(), {
+    path: ['startDate'],
+    message: 'startDate cannot be in the past'
   });
 
 const createTripSchema = z.object({
