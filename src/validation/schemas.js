@@ -34,7 +34,7 @@ const tripFields = {
   notes: z.string().trim().max(1000).optional(),
   preferenceTags: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
   budgetAmount: z.number().positive().optional(),
-  budgetCurrency: z.string().trim().length(3).optional(),
+  budgetCurrency: z.string().trim().regex(/^[A-Za-z]{3}$/, 'Use a 3-letter currency code').transform((value) => value.toUpperCase()).optional(),
   status: z.enum(['planned', 'visited', 'cancelled']).default('planned')
 };
 

@@ -52,11 +52,13 @@ describe('Trip API', () => {
         notes: 'Try local food and visit temples.',
         preferenceTags: ['food', 'culture'],
         budgetAmount: 2500,
+        budgetCurrency: 'jpy',
         status: 'planned'
       });
 
     expect(created.status).toBe(201);
     expect(created.body.data.destination).toBe('Kyoto');
+    expect(created.body.data.budgetCurrency).toBe('JPY');
 
     const tripId = created.body.data.id;
 

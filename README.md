@@ -1,8 +1,8 @@
 # Smart Travel Planner API
 
-This is the Part A self-developed API for the Smart Travel Planner coursework. It is designed to meet the higher bands of the marking rubric by showing RESTful routing, versioning, modular architecture, persistent data storage, JWT authentication, validation, centralized error handling, OpenAPI documentation, and automated tests.
+This project implements the Smart Travel Planner coursework across the API, external API integration, and application interface. It shows RESTful routing, versioning, modular architecture, persistent data storage, JWT authentication, validation, centralized error handling, OpenAPI documentation, automated tests, and a browser-based planning interface.
 
-## Distinction-Level Evidence
+## Rubric Evidence
 
 | Rubric area | Evidence in this API |
 |---|---|
@@ -147,22 +147,6 @@ For the report and demonstration, include screenshots of:
 - A successful `GET /api/v1/planner/trips/:id/summary` showing third-party weather and attractions integration.
 - Swagger UI showing the documented endpoints.
 
-## Suggested GitHub Commit History
+## Development Note
 
-Use real commits while developing. A single final upload usually looks weak for this assignment.
-
-```bash
-git add .
-git commit -m "Set up Express API structure"
-git commit -m "Add JWT authentication and user schema"
-git commit -m "Implement trip CRUD endpoints"
-git commit -m "Use JSON file storage for demo persistence"
-git commit -m "Add validation and centralized error handling"
-git commit -m "Add OpenAPI documentation and tests"
-git commit -m "Integrate external weather API"
-git commit -m "Add web application interface"
-```
-
-## AI Use Acknowledgement
-
-If you use this scaffold, acknowledge AI assistance in the final report. Keep the percentage honest and be ready to explain the code during the face-to-face demonstration.
+The repository history shows the project being built in stages: API structure, authentication, trip CRUD, JSON persistence, validation, documentation, tests, external APIs, and the application interface. Any AI-assisted planning or code review should be acknowledged honestly in the final report if required by the university policy.

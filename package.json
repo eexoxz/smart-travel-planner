@@ -1,7 +1,7 @@
 {
   "name": "smart-travel-planner-api",
   "version": "1.0.0",
-  "description": "Part A self-developed REST API for Smart Travel Planner coursework.",
+  "description": "Smart Travel Planner coursework API and web application.",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
@@ -14,9 +14,12 @@
     "rest-api",
     "travel-planner",
     "json-storage",
-    "jwt"
+    "jwt",
+    "openapi",
+    "weather-api",
+    "web-app"
   ],
-  "author": "Replace with your group name",
+  "author": "6003CEM Smart Travel Planner Team",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",

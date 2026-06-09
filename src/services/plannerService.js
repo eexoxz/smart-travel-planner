@@ -4,7 +4,8 @@ const attractionService = require('./attractionService');
 
 async function getTripWeatherSummary(userId, tripId) {
   const trip = tripService.getTrip(userId, tripId);
-  const weather = await weatherService.getWeatherForDestination(trip.destination, trip.country);
+  const weatherQuery = [trip.destination, trip.region].filter(Boolean).join(', ');
+  const weather = await weatherService.getWeatherForDestination(weatherQuery, trip.country);
   const attractions = await getAttractionsSafely(weather.location.latitude, weather.location.longitude);
 
   return {
