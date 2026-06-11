@@ -1,10 +1,10 @@
 # Smart Travel Planner API
 
-This project implements the Smart Travel Planner coursework across the API, external API integration, and application interface. It shows RESTful routing, versioning, modular architecture, persistent data storage, JWT authentication, validation, centralized error handling, OpenAPI documentation, automated tests, and a browser-based planning interface.
+Smart Travel Planner is a full-stack travel planning application built with a Node.js and Express REST API, SQLite persistence, third-party travel data integration, and a browser-based HTML/CSS/JavaScript interface.
 
-## Rubric Evidence
+## Technical Overview
 
-| Rubric area | Evidence in this API |
+| Area | Implementation |
 |---|---|
 | API Design & Architecture | `/api/v1` versioning, MVC-style layers, separate routes/controllers/services/repositories |
 | Functionality & Business Logic | Full CRUD for user-owned trip records with filtering and ownership checks |
@@ -52,7 +52,7 @@ Opening `http://localhost:3000` redirects to the application interface.
 
 ## Database Choice
 
-This version uses a local SQLite database at `data/travel-planner.sqlite`. It satisfies the assignment's required database stack while keeping setup simple because the project uses Node's built-in SQLite support instead of a native npm package.
+This version uses a local SQLite database at `data/travel-planner.sqlite`. The database contains related `users` and `trips` tables, with each trip linked to the authenticated user who owns it.
 
 ## Third-Party API Integration
 
@@ -137,7 +137,7 @@ Run automated tests:
 npm test
 ```
 
-For the report and demonstration, include screenshots of:
+For review or presentation, useful screenshots include:
 
 - A successful user registration or login.
 - The `/app` interface showing saved trips.
@@ -147,6 +147,6 @@ For the report and demonstration, include screenshots of:
 - A successful `GET /api/v1/planner/trips/:id/summary` showing third-party weather and attractions integration.
 - Swagger UI showing the documented endpoints.
 
-## Development Note
+## Development Progress
 
-The repository history shows the project being built in stages: API structure, authentication, trip CRUD, SQLite persistence, validation, documentation, tests, external APIs, and the application interface. Any AI-assisted planning or code review should be acknowledged honestly in the final report if required by the university policy.
+The repository history shows the project being built in stages: API structure, authentication, trip CRUD, SQLite persistence, validation, documentation, tests, external APIs, and the application interface.

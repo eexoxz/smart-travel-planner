@@ -1,10 +1,10 @@
-# Report Notes for Part A
+# Technical Report Notes
 
-Use these notes to write the Part A section of your final report in your own words.
+This document summarises the main technical decisions behind the Smart Travel Planner API and application.
 
 ## Architecture
 
-The self-developed API follows a layered Express architecture. Routes define the public REST endpoints, controllers handle HTTP request and response logic, services contain business rules, repositories isolate data access, and middleware handles authentication, validation and errors. This separation improves maintainability and makes the system easier to extend for Part B third-party API integration.
+The API follows a layered Express architecture. Routes define the public REST endpoints, controllers handle HTTP request and response logic, services contain business rules, repositories isolate data access, and middleware handles authentication, validation and errors. This separation improves maintainability and makes the system easier to extend.
 
 ## Database Design
 
@@ -25,15 +25,15 @@ Zod validates request bodies, route parameters and query strings before the cont
 
 ## Why This Supports the Smart Travel Planner
 
-The API stores the user-specific travel data required by the assignment, including destinations, dates, notes, preferences, budget and trip status. The Part B planner endpoint combines this stored trip information with Open-Meteo weather data and Wikidata nearby point-of-interest data to produce meaningful travel planning results.
+The API stores user-specific travel data including destinations, dates, notes, preferences, budget and trip status. The planner endpoint combines this stored trip information with Open-Meteo weather data and Wikidata nearby point-of-interest data to produce meaningful travel planning results.
 
-## Part B Third-Party API Integration
+## Third-Party API Integration
 
 The endpoint `GET /api/v1/planner/trips/:id/summary` demonstrates third-party API integration. It first reads the authenticated user's saved trip from the self-developed API, then sends the trip destination to Open-Meteo's geocoding API to obtain latitude and longitude. These coordinates are then used with Open-Meteo's forecast API to fetch current weather conditions and with Wikidata Query Service to fetch nearby specific points of interest such as attractions, museums, parks, beaches, temples, monuments and heritage sites.
 
 The final response combines internal and external data in one JSON result: the saved trip, weather provider, resolved location, current temperature, humidity, wind speed, weather description, nearby attractions and a simple travel recommendation. This meets the requirement to merge data from both the self-developed API and third-party APIs.
 
-## Part C Application Layer
+## Application Layer
 
 The application layer is implemented as a web interface using HTML, CSS and JavaScript. It is served from the Express backend at `/app`, so no separate frontend server is required. Users can register or log in, create travel records, view saved trips, update or delete trips and generate a travel plan for a selected trip.
 

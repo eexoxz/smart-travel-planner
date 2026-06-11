@@ -1,7 +1,7 @@
 {
   "name": "smart-travel-planner-api",
   "version": "1.0.0",
-  "description": "Smart Travel Planner coursework API and web application.",
+  "description": "Smart Travel Planner REST API and web application.",
   "main": "src/server.js",
   "scripts": {
     "dev": "node --no-warnings ./node_modules/nodemon/bin/nodemon.js src/server.js",
