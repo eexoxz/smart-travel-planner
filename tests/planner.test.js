@@ -1,17 +1,17 @@
 process.env.NODE_ENV = 'test';
-process.env.DATA_FILE = './data/test-planner.json';
+process.env.DATABASE_FILE = './data/test-planner.sqlite';
 process.env.JWT_SECRET = 'test_secret_for_planner_tests';
 
 const request = require('supertest');
 const createApp = require('../src/app');
-const { resetStore } = require('../src/db/jsonStore');
+const { resetStore } = require('../src/db/sqliteStore');
 
 let app;
 let token;
 let tripId;
 
 beforeAll(async () => {
-  resetStore(process.env.DATA_FILE);
+  resetStore(process.env.DATABASE_FILE);
   app = createApp();
 
   global.fetch = jest.fn()
@@ -86,7 +86,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  resetStore(process.env.DATA_FILE);
+  resetStore(process.env.DATABASE_FILE);
   jest.restoreAllMocks();
 });
 

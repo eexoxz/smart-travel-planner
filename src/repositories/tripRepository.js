@@ -1,4 +1,14 @@
-const { readDatabase, writeDatabase, getTimestamp } = require('../db/jsonStore');
+const { getDatabase, getTimestamp } = require('../db/sqliteStore');
+
+function parseTags(value) {
+  if (!value) return [];
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return [];
+  }
+}
 
 function mapTrip(row) {
   if (!row) return undefined;
@@ -12,7 +22,7 @@ function mapTrip(row) {
     startDate: row.start_date,
     endDate: row.end_date,
     notes: row.notes,
-    preferenceTags: row.preference_tags || [],
+    preferenceTags: parseTags(row.preference_tags),
     budgetAmount: row.budget_amount,
     budgetCurrency: row.budget_currency,
     status: row.status,
@@ -22,53 +32,66 @@ function mapTrip(row) {
 }
 
 function create(userId, data) {
-  const database = readDatabase();
+  const database = getDatabase();
   const now = getTimestamp();
-  const trip = {
-    id: database.meta.tripsNextId,
-    user_id: Number(userId),
-    destination: data.destination,
-    country: data.country || null,
-    region: data.region || null,
-    start_date: data.startDate,
-    end_date: data.endDate || null,
-    notes: data.notes || null,
-    preference_tags: data.preferenceTags || [],
-    budget_amount: data.budgetAmount || null,
-    budget_currency: data.budgetCurrency || null,
-    status: data.status || 'planned',
-    created_at: now,
-    updated_at: now
-  };
+  const result = database.prepare(`
+    INSERT INTO trips (
+      user_id, destination, country, region, start_date, end_date, notes,
+      preference_tags, budget_amount, budget_currency, status, created_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    Number(userId),
+    data.destination,
+    data.country || null,
+    data.region || null,
+    data.startDate,
+    data.endDate || null,
+    data.notes || null,
+    JSON.stringify(data.preferenceTags || []),
+    data.budgetAmount ?? null,
+    data.budgetCurrency || null,
+    data.status || 'planned',
+    now,
+    now
+  );
 
-  database.meta.tripsNextId += 1;
-  database.trips.push(trip);
-  writeDatabase(database);
-
-  return mapTrip(trip);
+  return findByIdForUser(result.lastInsertRowid, userId);
 }
 
 function findAllForUser(userId, filters) {
-  const database = readDatabase();
-  const destination = filters.destination?.toLowerCase();
-  const rows = database.trips
-    .filter((trip) => trip.user_id === Number(userId))
-    .filter((trip) => !filters.status || trip.status === filters.status)
-    .filter((trip) => !destination || trip.destination.toLowerCase().includes(destination))
-    .sort((a, b) => {
-      const dateCompare = a.start_date.localeCompare(b.start_date);
-      return dateCompare || b.created_at.localeCompare(a.created_at);
-    })
-    .slice(filters.offset, filters.offset + filters.limit);
+  const clauses = ['user_id = ?'];
+  const params = [Number(userId)];
+
+  if (filters.status) {
+    clauses.push('status = ?');
+    params.push(filters.status);
+  }
+
+  if (filters.destination) {
+    clauses.push('LOWER(destination) LIKE ?');
+    params.push(`%${filters.destination.toLowerCase()}%`);
+  }
+
+  params.push(filters.limit, filters.offset);
+
+  const rows = getDatabase()
+    .prepare(`
+      SELECT *
+      FROM trips
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY start_date ASC, created_at DESC
+      LIMIT ? OFFSET ?
+    `)
+    .all(...params);
 
   return rows.map(mapTrip);
 }
 
 function findByIdForUser(id, userId) {
-  const database = readDatabase();
-  const row = database.trips.find((trip) => (
-    trip.id === Number(id) && trip.user_id === Number(userId)
-  ));
+  const row = getDatabase()
+    .prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?')
+    .get(Number(id), Number(userId));
 
   return mapTrip(row);
 }
@@ -90,39 +113,45 @@ function update(id, userId, data) {
     status: data.status ?? existing.status
   };
 
-  const database = readDatabase();
-  const index = database.trips.findIndex((trip) => (
-    trip.id === Number(id) && trip.user_id === Number(userId)
-  ));
+  getDatabase().prepare(`
+    UPDATE trips
+    SET destination = ?,
+        country = ?,
+        region = ?,
+        start_date = ?,
+        end_date = ?,
+        notes = ?,
+        preference_tags = ?,
+        budget_amount = ?,
+        budget_currency = ?,
+        status = ?,
+        updated_at = ?
+    WHERE id = ? AND user_id = ?
+  `).run(
+    next.destination,
+    next.country,
+    next.region,
+    next.startDate,
+    next.endDate,
+    next.notes,
+    JSON.stringify(next.preferenceTags || []),
+    next.budgetAmount,
+    next.budgetCurrency,
+    next.status,
+    getTimestamp(),
+    Number(id),
+    Number(userId)
+  );
 
-  database.trips[index] = {
-    ...database.trips[index],
-    destination: next.destination,
-    country: next.country,
-    region: next.region,
-    start_date: next.startDate,
-    end_date: next.endDate,
-    notes: next.notes,
-    preference_tags: next.preferenceTags || [],
-    budget_amount: next.budgetAmount,
-    budget_currency: next.budgetCurrency,
-    status: next.status,
-    updated_at: getTimestamp()
-  };
-
-  writeDatabase(database);
-  return mapTrip(database.trips[index]);
+  return findByIdForUser(id, userId);
 }
 
 function remove(id, userId) {
-  const database = readDatabase();
-  const originalLength = database.trips.length;
-  database.trips = database.trips.filter((trip) => !(
-    trip.id === Number(id) && trip.user_id === Number(userId)
-  ));
+  const result = getDatabase()
+    .prepare('DELETE FROM trips WHERE id = ? AND user_id = ?')
+    .run(Number(id), Number(userId));
 
-  writeDatabase(database);
-  return database.trips.length < originalLength;
+  return result.changes > 0;
 }
 
 module.exports = {

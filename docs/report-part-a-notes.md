@@ -8,12 +8,12 @@ The self-developed API follows a layered Express architecture. Routes define the
 
 ## Database Design
 
-For demonstration purposes, the API uses a local JSON file for persistent storage. The file stores two related collections:
+The API uses a local SQLite database for persistent storage. The database stores two related tables:
 
 - `users`: registered traveller accounts with hashed passwords.
 - `trips`: travel records linked to one user through `user_id`.
 
-The one-to-many relationship means each user can manage many trips while only seeing their own records. The repository layer keeps this storage choice separate from the rest of the API, so the JSON file can be replaced with MySQL, MongoDB, PostgreSQL or SQLite later without changing the controller or route structure.
+The one-to-many relationship means each user can manage many trips while only seeing their own records. The repository layer keeps SQL access separate from the rest of the API, so the controller and route structure stay focused on HTTP behaviour rather than database details.
 
 ## Security
 

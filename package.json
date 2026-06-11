@@ -4,16 +4,16 @@
   "description": "Smart Travel Planner coursework API and web application.",
   "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "test": "jest --runInBand",
-    "test:coverage": "jest --coverage --runInBand"
+    "dev": "node --no-warnings ./node_modules/nodemon/bin/nodemon.js src/server.js",
+    "start": "node --no-warnings src/server.js",
+    "test": "node --no-warnings ./node_modules/jest/bin/jest.js --runInBand",
+    "test:coverage": "node --no-warnings ./node_modules/jest/bin/jest.js --coverage --runInBand"
   },
   "keywords": [
     "express",
     "rest-api",
     "travel-planner",
-    "json-storage",
+    "sqlite",
     "jwt",
     "openapi",
     "weather-api",

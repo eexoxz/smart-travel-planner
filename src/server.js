@@ -1,6 +1,6 @@
 const createApp = require('./app');
 const env = require('./config/env');
-const { ensureStore } = require('./db/jsonStore');
+const { ensureStore } = require('./db/sqliteStore');
 
 ensureStore();
 

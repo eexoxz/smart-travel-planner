@@ -9,7 +9,7 @@ This project implements the Smart Travel Planner coursework across the API, exte
 | API Design & Architecture | `/api/v1` versioning, MVC-style layers, separate routes/controllers/services/repositories |
 | Functionality & Business Logic | Full CRUD for user-owned trip records with filtering and ownership checks |
 | Security Implementation | JWT login, hashed passwords, Helmet security headers, rate limiting, no hard-coded production secrets |
-| Data Storage & Integration | JSON file storage with related `users` and `trips` collections for demo purposes |
+| Data Storage & Integration | SQLite database with related `users` and `trips` tables |
 | Code Quality | Small modules, meaningful names, reusable validation and error handling |
 | Testing & Error Handling | Jest/Supertest tests, centralized JSON error responses, validation feedback |
 | Documentation & Presentation | OpenAPI spec and Swagger UI at `/api-docs` |
@@ -50,9 +50,9 @@ http://localhost:3000/app
 
 Opening `http://localhost:3000` redirects to the application interface.
 
-## Storage Choice
+## Database Choice
 
-This demo version uses a local JSON file at `data/travel-planner.json` instead of SQLite or MongoDB. This avoids native package installation issues during demonstration while still showing persistent storage, user-owned trip records, and a clear repository layer that can later be swapped for a full database.
+This version uses a local SQLite database at `data/travel-planner.sqlite`. It satisfies the assignment's required database stack while keeping setup simple because the project uses Node's built-in SQLite support instead of a native npm package.
 
 ## Third-Party API Integration
 
@@ -149,4 +149,4 @@ For the report and demonstration, include screenshots of:
 
 ## Development Note
 
-The repository history shows the project being built in stages: API structure, authentication, trip CRUD, JSON persistence, validation, documentation, tests, external APIs, and the application interface. Any AI-assisted planning or code review should be acknowledged honestly in the final report if required by the university policy.
+The repository history shows the project being built in stages: API structure, authentication, trip CRUD, SQLite persistence, validation, documentation, tests, external APIs, and the application interface. Any AI-assisted planning or code review should be acknowledged honestly in the final report if required by the university policy.

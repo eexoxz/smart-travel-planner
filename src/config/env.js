@@ -5,7 +5,7 @@ dotenv.config();
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 3000),
-  dataFile: process.env.DATA_FILE || './data/travel-planner.json',
+  databaseFile: process.env.DATABASE_FILE || './data/travel-planner.sqlite',
   jwtSecret: process.env.JWT_SECRET || 'development_secret_change_before_submission',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
   corsOrigin: process.env.CORS_ORIGIN || '*',

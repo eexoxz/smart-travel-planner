@@ -1,4 +1,4 @@
-const { readDatabase, writeDatabase, getTimestamp } = require('../db/jsonStore');
+const { getDatabase, getTimestamp } = require('../db/sqliteStore');
 
 function toPublicUser(row) {
   if (!row) return undefined;
@@ -14,33 +14,26 @@ function toPublicUser(row) {
 }
 
 function create({ name, email, passwordHash }) {
-  const database = readDatabase();
+  const database = getDatabase();
   const now = getTimestamp();
-  const user = {
-    id: database.meta.usersNextId,
-    name,
-    email: email.toLowerCase(),
-    password_hash: passwordHash,
-    role: 'traveller',
-    created_at: now,
-    updated_at: now
-  };
+  const result = database.prepare(`
+    INSERT INTO users (name, email, password_hash, role, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(name, email.toLowerCase(), passwordHash, 'traveller', now, now);
 
-  database.meta.usersNextId += 1;
-  database.users.push(user);
-  writeDatabase(database);
-
-  return user;
+  return findById(result.lastInsertRowid);
 }
 
 function findByEmail(email) {
-  const database = readDatabase();
-  return database.users.find((user) => user.email === email.toLowerCase());
+  return getDatabase()
+    .prepare('SELECT * FROM users WHERE email = ?')
+    .get(email.toLowerCase());
 }
 
 function findById(id) {
-  const database = readDatabase();
-  return database.users.find((user) => user.id === Number(id));
+  return getDatabase()
+    .prepare('SELECT * FROM users WHERE id = ?')
+    .get(Number(id));
 }
 
 module.exports = {

@@ -1,5 +1,5 @@
 process.env.NODE_ENV = 'test';
-process.env.DATA_FILE = './data/test-locations.json';
+process.env.DATABASE_FILE = './data/test-locations.sqlite';
 process.env.JWT_SECRET = 'test_secret_for_location_tests';
 
 const request = require('supertest');

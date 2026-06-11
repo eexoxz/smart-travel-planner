@@ -1,16 +1,16 @@
 process.env.NODE_ENV = 'test';
-process.env.DATA_FILE = './data/test-travel-planner.json';
+process.env.DATABASE_FILE = './data/test-travel-planner.sqlite';
 process.env.JWT_SECRET = 'test_secret_for_local_automated_tests';
 
 const request = require('supertest');
 const createApp = require('../src/app');
-const { resetStore } = require('../src/db/jsonStore');
+const { resetStore } = require('../src/db/sqliteStore');
 
 let app;
 let token;
 
 beforeAll(async () => {
-  resetStore(process.env.DATA_FILE);
+  resetStore(process.env.DATABASE_FILE);
   app = createApp();
 
   const response = await request(app)
@@ -25,7 +25,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  resetStore(process.env.DATA_FILE);
+  resetStore(process.env.DATABASE_FILE);
 });
 
 describe('Trip API', () => {
