@@ -137,6 +137,8 @@ Run automated tests:
 npm test
 ```
 
+Manual API checks can be run with the Postman collection at `postman/smart-travel-planner-api.postman_collection.json`.
+
 For review or presentation, useful screenshots include:
 
 - A successful user registration or login.

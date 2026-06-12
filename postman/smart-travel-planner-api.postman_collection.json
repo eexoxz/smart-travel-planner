@@ -1,0 +1,289 @@
+{
+  "info": {
+    "name": "Smart Travel Planner API",
+    "description": "Manual API test collection for authentication, trip CRUD, planner integration and error responses.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tripId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('token', body.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Traveller\",\n  \"email\": \"demo.traveller@example.com\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login succeeds', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('token', body.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.traveller@example.com\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trips",
+      "item": [
+        {
+          "name": "Create Trip",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('trip created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('tripId', String(body.data.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"Kyoto\",\n  \"country\": \"Japan\",\n  \"region\": \"Kansai\",\n  \"startDate\": \"2026-07-10\",\n  \"endDate\": \"2026-07-16\",\n  \"notes\": \"Prefer cultural sites and local food.\",\n  \"preferenceTags\": [\"culture\", \"food\", \"museums\"],\n  \"budgetAmount\": 2500,\n  \"budgetCurrency\": \"JPY\",\n  \"status\": \"planned\"\n}"
+            },
+            "url": "{{baseUrl}}/trips"
+          }
+        },
+        {
+          "name": "List Trips",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/trips?status=planned"
+          }
+        },
+        {
+          "name": "Get Trip",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/trips/{{tripId}}"
+          }
+        },
+        {
+          "name": "Update Trip",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"visited\",\n  \"notes\": \"Updated travel notes after reviewing the plan.\"\n}"
+            },
+            "url": "{{baseUrl}}/trips/{{tripId}}"
+          }
+        },
+        {
+          "name": "Delete Trip",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/trips/{{tripId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Planner Integration",
+      "item": [
+        {
+          "name": "Generate Travel Plan Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": "{{baseUrl}}/planner/trips/{{tripId}}/summary"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Location Helpers",
+      "item": [
+        {
+          "name": "List States",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/locations/states?country=Malaysia"
+          }
+        },
+        {
+          "name": "List Cities",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/locations/cities?country=Malaysia&state=Penang"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Examples",
+      "item": [
+        {
+          "name": "Missing JWT",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/trips"
+          }
+        },
+        {
+          "name": "Invalid JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid-token"
+              }
+            ],
+            "url": "{{baseUrl}}/trips"
+          }
+        },
+        {
+          "name": "Invalid Date Range",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"Seoul\",\n  \"country\": \"South Korea\",\n  \"startDate\": \"2026-08-20\",\n  \"endDate\": \"2026-08-10\"\n}"
+            },
+            "url": "{{baseUrl}}/trips"
+          }
+        },
+        {
+          "name": "Unknown Route",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/unknown"
+          }
+        }
+      ]
+    }
+  ]
+}
