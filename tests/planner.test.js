@@ -108,3 +108,61 @@ test('combines a saved trip with external weather data', async () => {
   expect(response.body.data.travelPlan.preparationTips).toContain('Check attraction opening hours before visiting museums or cultural sites.');
   expect(global.fetch).toHaveBeenCalledTimes(3);
 });
+
+test('returns an error when the weather API cannot geocode the destination', async () => {
+  global.fetch.mockReset().mockResolvedValueOnce({
+    ok: false,
+    status: 429,
+    json: async () => ({})
+  });
+
+  const response = await request(app)
+    .get(`/api/v1/planner/trips/${tripId}/summary`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(502);
+  expect(response.body.success).toBe(false);
+  expect(response.body.error.message).toBe('Unable to geocode destination: external API returned 429');
+});
+
+test('keeps the planner available when nearby attractions fail', async () => {
+  global.fetch.mockReset()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [{
+          name: 'Kyoto',
+          country: 'Japan',
+          latitude: 35.0116,
+          longitude: 135.7681,
+          timezone: 'Asia/Tokyo'
+        }]
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        current: {
+          time: '2026-06-01T12:00',
+          temperature_2m: 28,
+          relative_humidity_2m: 70,
+          weather_code: 2,
+          wind_speed_10m: 10
+        }
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: async () => ({})
+    });
+
+  const response = await request(app)
+    .get(`/api/v1/planner/trips/${tripId}/summary`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
+  expect(response.body.data.externalData.attractions.available).toBe(false);
+  expect(response.body.data.travelPlan.limitation).toContain('Nearby places could not be loaded');
+});

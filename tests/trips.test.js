@@ -40,6 +40,16 @@ describe('Trip API', () => {
     expect(response.status).toBe(401);
   });
 
+  test('rejects invalid authentication tokens', async () => {
+    const response = await request(app)
+      .get('/api/v1/trips')
+      .set('Authorization', 'Bearer invalid-token');
+
+    expect(response.status).toBe(401);
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.message).toBe('Invalid or expired authentication token');
+  });
+
   test('creates, lists, updates and deletes a trip', async () => {
     const created = await request(app)
       .post('/api/v1/trips')
