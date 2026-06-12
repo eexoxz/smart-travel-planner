@@ -29,7 +29,7 @@ afterAll(() => {
 });
 
 describe('Trip API', () => {
-  test('rejects unauthenticated trip creation', async () => {
+  test('requires authentication', async () => {
     const response = await request(app)
       .post('/api/v1/trips')
       .send({
@@ -40,7 +40,7 @@ describe('Trip API', () => {
     expect(response.status).toBe(401);
   });
 
-  test('rejects invalid authentication tokens', async () => {
+  test('rejects invalid JWT', async () => {
     const response = await request(app)
       .get('/api/v1/trips')
       .set('Authorization', 'Bearer invalid-token');
@@ -50,7 +50,7 @@ describe('Trip API', () => {
     expect(response.body.error.message).toBe('Invalid or expired authentication token');
   });
 
-  test('creates, lists, updates and deletes a trip', async () => {
+  test('supports trip CRUD', async () => {
     const created = await request(app)
       .post('/api/v1/trips')
       .set('Authorization', `Bearer ${token}`)
@@ -103,7 +103,7 @@ describe('Trip API', () => {
     expect(missing.status).toBe(404);
   });
 
-  test('validates date ranges', async () => {
+  test('validates trip dates', async () => {
     const response = await request(app)
       .post('/api/v1/trips')
       .set('Authorization', `Bearer ${token}`)

@@ -38,7 +38,7 @@ afterAll(() => {
   jest.restoreAllMocks();
 });
 
-test('returns states for a selected country', async () => {
+test('lists country regions', async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({
@@ -60,7 +60,7 @@ test('returns states for a selected country', async () => {
   expect(response.body.data[0].name).toBe('Penang');
 });
 
-test('returns cities for a selected country and state', async () => {
+test('lists region cities', async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({

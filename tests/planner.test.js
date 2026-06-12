@@ -90,7 +90,7 @@ afterAll(() => {
   jest.restoreAllMocks();
 });
 
-test('combines a saved trip with external weather data', async () => {
+test('builds trip summary', async () => {
   const response = await request(app)
     .get(`/api/v1/planner/trips/${tripId}/summary`)
     .set('Authorization', `Bearer ${token}`);
@@ -109,7 +109,7 @@ test('combines a saved trip with external weather data', async () => {
   expect(global.fetch).toHaveBeenCalledTimes(3);
 });
 
-test('returns an error when the weather API cannot geocode the destination', async () => {
+test('handles geocoding failure', async () => {
   global.fetch.mockReset().mockResolvedValueOnce({
     ok: false,
     status: 429,
@@ -125,7 +125,7 @@ test('returns an error when the weather API cannot geocode the destination', asy
   expect(response.body.error.message).toBe('Unable to geocode destination: external API returned 429');
 });
 
-test('keeps the planner available when nearby attractions fail', async () => {
+test('handles attraction fallback', async () => {
   global.fetch.mockReset()
     .mockResolvedValueOnce({
       ok: true,
