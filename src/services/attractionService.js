@@ -51,7 +51,7 @@ async function getNearbyAttractions(latitude, longitude) {
     response = await fetch(`${WIKIDATA_QUERY_URL}?${params}`, {
       headers: {
         Accept: 'application/sparql-results+json',
-        'User-Agent': 'SmartTravelPlannerStudentProject/1.0'
+        'User-Agent': 'SmartTravelPlannerApp/1.0'
       }
     });
   } catch (error) {

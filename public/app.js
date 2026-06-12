@@ -281,7 +281,7 @@ function renderTrips() {
       </header>
       <p>${escapeHtml(trip.notes || 'No notes')}</p>
       <div class="card-actions">
-        <button type="button" data-action="summary" data-id="${trip.id}">Generate plan</button>
+        <button type="button" data-action="summary" data-id="${trip.id}">View plan</button>
         <button type="button" data-action="edit" data-id="${trip.id}">Edit</button>
         <button type="button" data-action="delete" data-id="${trip.id}">Delete</button>
       </div>
@@ -316,7 +316,7 @@ async function handleTripListClick(event) {
 }
 
 async function loadSummary(tripId) {
-  elements.summaryContent.innerHTML = '<div class="summary-empty">Generating travel plan...</div>';
+  elements.summaryContent.innerHTML = '<div class="summary-empty">Preparing travel plan...</div>';
   const payload = await apiRequest(`/planner/trips/${tripId}/summary`);
   renderSummary(payload.data);
 }
@@ -341,7 +341,7 @@ function renderSummary(data) {
     <div class="summary-content">
       <div class="plan-hero">
         <div>
-          <span class="eyebrow">Generated plan</span>
+          <span class="eyebrow">Plan summary</span>
           <h3>${escapeHtml(plan.title)}</h3>
         </div>
         <p>${escapeHtml(data.recommendation.summary)}</p>
@@ -441,7 +441,7 @@ function logout() {
   setSessionStatus();
   state.trips = [];
   renderTrips();
-  elements.summaryContent.innerHTML = '<div class="summary-empty">Select a saved trip and generate a travel plan.</div>';
+  elements.summaryContent.innerHTML = '<div class="summary-empty">Select a saved trip to view its travel plan.</div>';
   showToast('Signed out');
 }
 

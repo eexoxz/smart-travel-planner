@@ -86,7 +86,7 @@ The interface supports:
 - searchable country selection
 - country to region/state to city dropdown flow
 - city options fetched from a public country-state-city API
-- selectable travel preference chips used by the generated plan
+- selectable travel preference chips used by the travel plan
 - budget amount with currency
 - generate a travel plan that combines saved trip data with weather and nearby points of interest
 - open Swagger documentation for API testing
