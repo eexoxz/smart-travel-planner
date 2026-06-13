@@ -1,15 +1,13 @@
 const AppError = require('../utils/appError');
 
-const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter'
-];
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const SEARCH_RADIUS_METERS = 10000;
-const FALLBACK_RADIUS_METERS = 20000;
 const DEFAULT_RESULT_LIMIT = 8;
 const MAX_RESULT_LIMIT = 15;
 const OVERPASS_CANDIDATE_LIMIT = 80;
+const OVERPASS_TIMEOUT_MS = 8000;
+const NOMINATIM_TIMEOUT_MS = 5000;
 const ACTIVE_PLACE_FILTER = '["name"]["disused"!~"."]["abandoned"!~"."]["demolished"!~"."]["razed"!~"."]["removed"!~"."]["closed"!~"."]["construction"!~"."]';
 
 const preferenceFilters = {
@@ -46,17 +44,6 @@ const preferenceFilters = {
   ]
 };
 
-const preferenceSearchTerms = {
-  food: ['cafes', 'restaurants', 'food markets'],
-  culture: ['landmarks', 'cultural attractions'],
-  museums: ['museums', 'galleries'],
-  beach: ['beaches'],
-  nature: ['parks', 'nature attractions'],
-  shopping: ['shopping areas', 'markets'],
-  nightlife: ['bars', 'nightlife'],
-  family: ['family attractions', 'parks']
-};
-
 const defaultFilters = [
   '["tourism"~"^(attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium)$"]',
   '["historic"]',
@@ -69,23 +56,23 @@ async function getNearbyAttractions(latitude, longitude, preferences = [], reque
   const resultLimit = Math.min(Math.max(Number(requestedLimit) || DEFAULT_RESULT_LIMIT, 5), MAX_RESULT_LIMIT);
   const filters = getTargetFilters(preferences);
   const hasPreferenceSearch = hasKnownPreference(preferences);
-  let searchRadiusMeters = SEARCH_RADIUS_METERS;
+  const searchRadiusMeters = SEARCH_RADIUS_METERS;
   let attractions = [];
   let searchError;
+  let message;
 
   try {
     attractions = await fetchAttractions(latitude, longitude, filters, resultLimit, searchRadiusMeters);
-
-    if (!attractions.length && hasPreferenceSearch) {
-      searchRadiusMeters = FALLBACK_RADIUS_METERS;
-      attractions = await fetchAttractions(latitude, longitude, defaultFilters, resultLimit, searchRadiusMeters);
-    }
   } catch (error) {
     searchError = error;
   }
 
   if (!attractions.length) {
-    attractions = await searchNamedPlaces(location, preferences, resultLimit);
+    if (hasPreferenceSearch) {
+      message = 'No matching preference-specific places were found, so the plan uses a broader destination-level place search.';
+    }
+
+    attractions = await searchNamedPlaces({ ...location, latitude, longitude }, resultLimit);
   }
 
   const attractionCount = Array.isArray(attractions) ? attractions.length : attractions.items.length;
@@ -99,6 +86,7 @@ async function getNearbyAttractions(latitude, longitude, preferences = [], reque
     searchRadiusMeters,
     searchFocus: getSearchFocus(preferences),
     available: true,
+    message,
     attractions: attractions.items || attractions
   };
 }
@@ -107,81 +95,69 @@ async function fetchAttractions(latitude, longitude, filters, resultLimit, radiu
   const statements = filters
     .flatMap((filter) => [
       `node(around:${radiusMeters},${latitude},${longitude})${filter}${ACTIVE_PLACE_FILTER};`,
-      `way(around:${radiusMeters},${latitude},${longitude})${filter}${ACTIVE_PLACE_FILTER};`,
-      `relation(around:${radiusMeters},${latitude},${longitude})${filter}${ACTIVE_PLACE_FILTER};`
+      `way(around:${radiusMeters},${latitude},${longitude})${filter}${ACTIVE_PLACE_FILTER};`
     ])
     .join('\n');
   const candidateLimit = Math.max(resultLimit * 5, OVERPASS_CANDIDATE_LIMIT);
   const query = `
-    [out:json][timeout:15];
+    [out:json][timeout:8];
     (
       ${statements}
     );
     out center tags ${candidateLimit};
   `;
   const params = new URLSearchParams({ data: query });
-  let lastError;
+  let response;
 
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'SmartTravelPlannerApp/1.0'
-        },
-        body: params
-      });
-
-      if (!response.ok) {
-        lastError = new AppError(`Unable to fetch nearby attractions: external API returned ${response.status}`, 502);
-        continue;
-      }
-
-      const data = await response.json();
-
-      return normalizeAttractions(data.elements || [], resultLimit);
-    } catch (error) {
-      lastError = error instanceof AppError
-        ? error
-        : new AppError('Unable to fetch nearby attractions: network request failed', 503);
-    }
+  try {
+    response = await fetchWithTimeout(OVERPASS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'SmartTravelPlannerApp/1.0'
+      },
+      body: params
+    }, OVERPASS_TIMEOUT_MS);
+  } catch (error) {
+    throw new AppError('Unable to fetch nearby attractions: network request failed', 503);
   }
 
-  throw lastError || new AppError('Unable to fetch nearby attractions: network request failed', 503);
+  if (!response.ok) {
+    throw new AppError(`Unable to fetch nearby attractions: external API returned ${response.status}`, 502);
+  }
+
+  const data = await response.json();
+
+  return normalizeAttractions(data.elements || [], resultLimit);
 }
 
-async function searchNamedPlaces(location, preferences, resultLimit) {
+async function searchNamedPlaces(location, resultLimit) {
   const placeText = getLocationText(location);
 
   if (!placeText) {
     return { provider: 'OpenStreetMap Nominatim', items: [] };
   }
 
-  const terms = getSearchTerms(preferences).slice(0, 3);
-  const results = [];
+  const params = new URLSearchParams({
+    q: `tourist attractions in ${placeText}`,
+    format: 'jsonv2',
+    limit: String(resultLimit),
+    addressdetails: '1',
+    namedetails: '1',
+    extratags: '1'
+  });
+  const viewbox = getViewbox(location.latitude, location.longitude);
 
-  for (const term of terms) {
-    const params = new URLSearchParams({
-      q: `${term} in ${placeText}`,
-      format: 'jsonv2',
-      limit: '6',
-      addressdetails: '1',
-      namedetails: '1',
-      extratags: '1'
-    });
-    const data = await fetchNominatim(`${NOMINATIM_URL}?${params}`);
-
-    results.push(...data.map((item) => mapNominatimPlace(item, term)));
-
-    if (results.length >= Math.min(resultLimit, 5)) {
-      break;
-    }
+  if (viewbox) {
+    params.set('viewbox', viewbox);
+    params.set('bounded', '1');
   }
+
+  const data = await fetchNominatim(`${NOMINATIM_URL}?${params}`);
 
   return {
     provider: 'OpenStreetMap Nominatim',
-    items: dedupeAttractions(results)
+    items: dedupeAttractions(data.map((item) => mapNominatimPlace(item, 'tourist attraction')))
       .filter((place) => place.name && isActivePlaceName(place.name))
       .slice(0, resultLimit)
   };
@@ -191,11 +167,11 @@ async function fetchNominatim(url) {
   let response;
 
   try {
-    response = await fetch(url, {
+    response = await fetchWithTimeout(url, {
       headers: {
         'User-Agent': 'SmartTravelPlannerApp/1.0'
       }
-    });
+    }, NOMINATIM_TIMEOUT_MS);
   } catch (error) {
     return [];
   }
@@ -236,12 +212,18 @@ function hasKnownPreference(preferences) {
   return preferences.some((preference) => preferenceFilters[preference.toLowerCase()]);
 }
 
-function getSearchTerms(preferences) {
-  const selected = preferences
-    .map((preference) => preference.toLowerCase())
-    .flatMap((preference) => preferenceSearchTerms[preference] || []);
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  return [...new Set(selected.length ? selected : ['attractions', 'restaurants', 'parks'])];
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function mapAttraction(element) {
@@ -317,7 +299,7 @@ function isTruthyTag(value) {
 }
 
 function isActivePlaceName(name) {
-  return !/(^closed\b|permanently closed|temporarily closed|closed down|shut down|폐업|영업종료)/i.test(String(name || ''));
+  return !/(^closed\b|permanently closed|temporarily closed|closed down|shut down)/i.test(String(name || ''));
 }
 
 function dedupeAttractions(items) {
@@ -345,6 +327,23 @@ function getLocationText(location = {}) {
     location.region,
     location.country
   ].filter(Boolean).join(', ');
+}
+
+function getViewbox(latitude, longitude) {
+  if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) {
+    return undefined;
+  }
+
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  const offset = 0.25;
+
+  return [
+    lon - offset,
+    lat + offset,
+    lon + offset,
+    lat - offset
+  ].join(',');
 }
 
 function getAddress(tags) {

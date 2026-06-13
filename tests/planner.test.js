@@ -143,7 +143,9 @@ test('builds trip summary', async () => {
   expect(response.body.data.travelPlan.itinerary[0]).toMatchObject({
     day: 1,
     date: '2026-07-10',
-    theme: 'Food and local neighbourhoods'
+    theme: 'Food and local neighbourhoods',
+    location: 'Nishiki Market',
+    bestTime: 'Late afternoon or evening.'
   });
   expect(response.body.data.travelPlan.itinerary[0].morning).toContain('Nishiki Market');
   expect(response.body.data.travelPlan.preparationTips).toContain('Reserve time for local food spots and keep meal times flexible.');
@@ -201,10 +203,6 @@ test('falls back to named place search when nearby radius search is empty', asyn
     })
     .mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ elements: [] })
-    })
-    .mockResolvedValueOnce({
-      ok: true,
       json: async () => ([
         {
           osm_type: 'node',
@@ -245,11 +243,76 @@ test('falls back to named place search when nearby radius search is empty', asyn
 
   expect(response.status).toBe(200);
   expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Nominatim');
+  expect(response.body.data.externalData.attractions.message).toContain('broader destination-level');
   expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Jeju Coffee Street');
   expect(response.body.data.externalData.attractions.attractions.map((item) => item.name)).not.toContain('Closed Jeju Cafe');
+  expect(response.body.data.travelPlan.itinerary).toHaveLength(4);
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Jeju Coffee Street');
+  expect(response.body.data.travelPlan.itinerary[0].bestTime).toBe('Late afternoon or evening.');
   expect(response.body.data.travelPlan.itinerary[0].morning).toContain('Jeju Coffee Street');
-  expect(global.fetch.mock.calls[4][0]).toContain('nominatim.openstreetmap.org');
-  expect(global.fetch.mock.calls[4][0]).toContain('Jeju');
+  expect(global.fetch.mock.calls[3][0]).toContain('nominatim.openstreetmap.org');
+  expect(global.fetch.mock.calls[3][0]).toContain('Jeju');
+  expect(global.fetch.mock.calls[3][0]).toContain('bounded=1');
+});
+
+test('uses destination-level itinerary when requested places are unavailable', async () => {
+  const trip = await request(app)
+    .post('/api/v1/trips')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      destination: 'Jeju City',
+      country: 'South Korea',
+      region: 'Jeju',
+      startDate: '2026-08-01',
+      endDate: '2026-08-02',
+      preferenceTags: ['beach']
+    });
+
+  global.fetch.mockReset()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [{
+          name: 'Jeju City',
+          country: 'South Korea',
+          admin1: 'Jeju',
+          latitude: 33.4996,
+          longitude: 126.5312,
+          timezone: 'Asia/Seoul'
+        }]
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        current: {
+          time: '2026-06-01T12:00',
+          temperature_2m: 24,
+          relative_humidity_2m: 62,
+          weather_code: 1,
+          wind_speed_10m: 12
+        }
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ elements: [] })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([])
+    });
+
+  const response = await request(app)
+    .get(`/api/v1/planner/trips/${trip.body.data.id}/summary`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.data.externalData.attractions.message).toContain('broader destination-level');
+  expect(response.body.data.travelPlan.itinerary).toHaveLength(2);
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Jeju City');
+  expect(response.body.data.travelPlan.itinerary[0].locationCategory).toBe('destination area');
+  expect(response.body.data.travelPlan.itinerary[0].morning).toContain('confirm a suitable stop');
 });
 
 test('handles geocoding failure', async () => {

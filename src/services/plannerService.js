@@ -29,7 +29,9 @@ async function getAttractionsSafely(latitude, longitude, preferences, requestedL
     return await attractionService.getNearbyAttractions(latitude, longitude, preferences, requestedLimit, {
       destination: trip.destination,
       region: trip.region,
-      country: trip.country
+      country: trip.country,
+      latitude,
+      longitude
     });
   } catch (error) {
     return {
@@ -85,6 +87,10 @@ function buildRecommendation(trip, weather, attractions) {
     advice.push('Nearby attractions could not be loaded at the moment, but the weather result is still available.');
   }
 
+  if (attractions.message) {
+    advice.push(attractions.message);
+  }
+
   return {
     destination: trip.destination,
     summary: advice.join(' ')
@@ -117,22 +123,37 @@ function buildItinerary(trip, weather, places, durationDays) {
   const totalDays = Math.min(durationDays, 14);
 
   return Array.from({ length: totalDays }, (_, index) => {
-    const firstPlace = places.length ? places[(index * 2) % places.length] : undefined;
-    const secondPlace = places.length ? places[(index * 2 + 1) % places.length] : undefined;
+    const location = getDayLocation(trip, places, index);
+    const theme = getDayTheme(trip, index);
+    const bestTime = getBestVisitTime(theme, weather);
 
     return {
       day: index + 1,
       date: addDays(trip.startDate, index),
-      theme: getDayTheme(trip, index),
-      morning: firstPlace
-        ? `Start with ${firstPlace.name} while energy levels are high.`
-        : `Start near ${trip.destination} and use saved notes to choose the first stop.`,
-      afternoon: secondPlace
-        ? `Continue to ${secondPlace.name} and keep transit time flexible.`
-        : getWeatherBasedAfternoon(weather),
+      theme,
+      location: location.name,
+      locationCategory: location.category,
+      locationUrl: location.url,
+      bestTime,
+      morning: location.isFallback
+        ? `Use ${location.name} as the main area and confirm a suitable stop before travelling.`
+        : `Make ${location.name} the main stop for this day.`,
+      afternoon: getWeatherBasedAfternoon(weather),
       evening: getEveningPlan(trip, index)
     };
   });
+}
+
+function getDayLocation(trip, places, index) {
+  if (places.length) {
+    return places[index % places.length];
+  }
+
+  return {
+    name: trip.destination,
+    category: 'destination area',
+    isFallback: true
+  };
 }
 
 function addDays(date, days) {
@@ -167,6 +188,26 @@ function getWeatherBasedAfternoon(weather) {
   }
 
   return 'Use the afternoon for flexible sightseeing around the destination area.';
+}
+
+function getBestVisitTime(theme, weather) {
+  if (weather.weatherCode >= 61 && weather.weatherCode <= 82) {
+    return 'Late morning or early afternoon, with an indoor backup if rain starts.';
+  }
+
+  if (weather.temperatureCelsius >= 30) {
+    return 'Morning before the hottest period, or after 5 PM.';
+  }
+
+  if (theme.includes('Food') || theme.includes('Evening')) {
+    return 'Late afternoon or evening.';
+  }
+
+  if (theme.includes('Beach') || theme.includes('Nature')) {
+    return 'Early morning or late afternoon.';
+  }
+
+  return 'Morning to early afternoon.';
 }
 
 function getEveningPlan(trip, index) {
