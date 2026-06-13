@@ -9,7 +9,8 @@ async function getTripWeatherSummary(userId, tripId) {
     weather.location.latitude,
     weather.location.longitude,
     trip.preferenceTags,
-    getRequestedPlaceCount(trip)
+    getRequestedPlaceCount(trip),
+    trip
   );
 
   return {
@@ -23,9 +24,13 @@ async function getTripWeatherSummary(userId, tripId) {
   };
 }
 
-async function getAttractionsSafely(latitude, longitude, preferences, requestedLimit) {
+async function getAttractionsSafely(latitude, longitude, preferences, requestedLimit, trip) {
   try {
-    return await attractionService.getNearbyAttractions(latitude, longitude, preferences, requestedLimit);
+    return await attractionService.getNearbyAttractions(latitude, longitude, preferences, requestedLimit, {
+      destination: trip.destination,
+      region: trip.region,
+      country: trip.country
+    });
   } catch (error) {
     return {
       provider: 'OpenStreetMap Overpass API',

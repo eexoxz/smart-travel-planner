@@ -156,6 +156,102 @@ test('builds trip summary', async () => {
   expect(global.fetch.mock.calls[2][1].body.toString()).toContain('%5B%22disused%22%21%7E%22.%22%5D');
 });
 
+test('falls back to named place search when nearby radius search is empty', async () => {
+  const jejuTrip = await request(app)
+    .post('/api/v1/trips')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      destination: 'Jeju City',
+      country: 'South Korea',
+      region: 'Jeju',
+      startDate: '2026-07-20',
+      endDate: '2026-07-23',
+      preferenceTags: ['food', 'culture', 'nature']
+    });
+
+  global.fetch.mockReset()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [{
+          name: 'Jeju City',
+          country: 'South Korea',
+          admin1: 'Jeju',
+          latitude: 33.4996,
+          longitude: 126.5312,
+          timezone: 'Asia/Seoul'
+        }]
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        current: {
+          time: '2026-06-01T12:00',
+          temperature_2m: 24,
+          relative_humidity_2m: 62,
+          weather_code: 1,
+          wind_speed_10m: 12
+        }
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ elements: [] })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ elements: [] })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([
+        {
+          osm_type: 'node',
+          osm_id: 9001,
+          lat: '33.512',
+          lon: '126.526',
+          category: 'amenity',
+          type: 'cafe',
+          name: 'Jeju Coffee Street',
+          display_name: 'Jeju Coffee Street, Jeju City, South Korea',
+          address: {
+            city: 'Jeju City'
+          }
+        },
+        {
+          osm_type: 'node',
+          osm_id: 9002,
+          lat: '33.513',
+          lon: '126.527',
+          category: 'amenity',
+          type: 'restaurant',
+          name: 'Closed Jeju Cafe',
+          display_name: 'Closed Jeju Cafe, Jeju City, South Korea',
+          address: {
+            city: 'Jeju City'
+          }
+        }
+      ])
+    })
+    .mockResolvedValue({
+      ok: true,
+      json: async () => ([])
+    });
+
+  const response = await request(app)
+    .get(`/api/v1/planner/trips/${jejuTrip.body.data.id}/summary`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Nominatim');
+  expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Jeju Coffee Street');
+  expect(response.body.data.externalData.attractions.attractions.map((item) => item.name)).not.toContain('Closed Jeju Cafe');
+  expect(response.body.data.travelPlan.itinerary[0].morning).toContain('Jeju Coffee Street');
+  expect(global.fetch.mock.calls[4][0]).toContain('nominatim.openstreetmap.org');
+  expect(global.fetch.mock.calls[4][0]).toContain('Jeju');
+});
+
 test('handles geocoding failure', async () => {
   global.fetch.mockReset().mockResolvedValueOnce({
     ok: false,

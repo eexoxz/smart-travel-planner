@@ -4,6 +4,7 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter'
 ];
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const SEARCH_RADIUS_METERS = 10000;
 const FALLBACK_RADIUS_METERS = 20000;
 const DEFAULT_RESULT_LIMIT = 8;
@@ -45,6 +46,17 @@ const preferenceFilters = {
   ]
 };
 
+const preferenceSearchTerms = {
+  food: ['cafes', 'restaurants', 'food markets'],
+  culture: ['landmarks', 'cultural attractions'],
+  museums: ['museums', 'galleries'],
+  beach: ['beaches'],
+  nature: ['parks', 'nature attractions'],
+  shopping: ['shopping areas', 'markets'],
+  nightlife: ['bars', 'nightlife'],
+  family: ['family attractions', 'parks']
+};
+
 const defaultFilters = [
   '["tourism"~"^(attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium)$"]',
   '["historic"]',
@@ -53,24 +65,41 @@ const defaultFilters = [
   '["amenity"~"^(cafe|restaurant|marketplace)$"]'
 ];
 
-async function getNearbyAttractions(latitude, longitude, preferences = [], requestedLimit = DEFAULT_RESULT_LIMIT) {
+async function getNearbyAttractions(latitude, longitude, preferences = [], requestedLimit = DEFAULT_RESULT_LIMIT, location = {}) {
   const resultLimit = Math.min(Math.max(Number(requestedLimit) || DEFAULT_RESULT_LIMIT, 5), MAX_RESULT_LIMIT);
   const filters = getTargetFilters(preferences);
   const hasPreferenceSearch = hasKnownPreference(preferences);
   let searchRadiusMeters = SEARCH_RADIUS_METERS;
-  let attractions = await fetchAttractions(latitude, longitude, filters, resultLimit, searchRadiusMeters);
+  let attractions = [];
+  let searchError;
 
-  if (!attractions.length && hasPreferenceSearch) {
-    searchRadiusMeters = FALLBACK_RADIUS_METERS;
-    attractions = await fetchAttractions(latitude, longitude, defaultFilters, resultLimit, searchRadiusMeters);
+  try {
+    attractions = await fetchAttractions(latitude, longitude, filters, resultLimit, searchRadiusMeters);
+
+    if (!attractions.length && hasPreferenceSearch) {
+      searchRadiusMeters = FALLBACK_RADIUS_METERS;
+      attractions = await fetchAttractions(latitude, longitude, defaultFilters, resultLimit, searchRadiusMeters);
+    }
+  } catch (error) {
+    searchError = error;
+  }
+
+  if (!attractions.length) {
+    attractions = await searchNamedPlaces(location, preferences, resultLimit);
+  }
+
+  const attractionCount = Array.isArray(attractions) ? attractions.length : attractions.items.length;
+
+  if (!attractionCount && searchError) {
+    throw searchError;
   }
 
   return {
-    provider: 'OpenStreetMap Overpass API',
+    provider: attractions.provider || 'OpenStreetMap Overpass API',
     searchRadiusMeters,
     searchFocus: getSearchFocus(preferences),
     available: true,
-    attractions
+    attractions: attractions.items || attractions
   };
 }
 
@@ -122,23 +151,70 @@ async function fetchAttractions(latitude, longitude, filters, resultLimit, radiu
   throw lastError || new AppError('Unable to fetch nearby attractions: network request failed', 503);
 }
 
-function normalizeAttractions(elements, resultLimit) {
-  const seen = new Set();
+async function searchNamedPlaces(location, preferences, resultLimit) {
+  const placeText = getLocationText(location);
 
+  if (!placeText) {
+    return { provider: 'OpenStreetMap Nominatim', items: [] };
+  }
+
+  const terms = getSearchTerms(preferences).slice(0, 3);
+  const results = [];
+
+  for (const term of terms) {
+    const params = new URLSearchParams({
+      q: `${term} in ${placeText}`,
+      format: 'jsonv2',
+      limit: '6',
+      addressdetails: '1',
+      namedetails: '1',
+      extratags: '1'
+    });
+    const data = await fetchNominatim(`${NOMINATIM_URL}?${params}`);
+
+    results.push(...data.map((item) => mapNominatimPlace(item, term)));
+
+    if (results.length >= Math.min(resultLimit, 5)) {
+      break;
+    }
+  }
+
+  return {
+    provider: 'OpenStreetMap Nominatim',
+    items: dedupeAttractions(results)
+      .filter((place) => place.name && isActivePlaceName(place.name))
+      .slice(0, resultLimit)
+  };
+}
+
+async function fetchNominatim(url) {
+  let response;
+
+  try {
+    response = await fetch(url, {
+      headers: {
+        'User-Agent': 'SmartTravelPlannerApp/1.0'
+      }
+    });
+  } catch (error) {
+    return [];
+  }
+
+  if (!response || !response.ok) {
+    return [];
+  }
+
+  return response.json();
+}
+
+function normalizeAttractions(elements, resultLimit) {
   return elements
     .filter((element) => isOpenPlace(element.tags || {}))
     .map(mapAttraction)
     .filter((attraction) => attraction.name)
-    .filter((attraction) => {
-      const key = `${attraction.name.toLowerCase()}|${attraction.category.toLowerCase()}`;
-
-      if (seen.has(key)) {
-        return false;
-      }
-
-      seen.add(key);
-      return true;
-    })
+    .filter((attraction) => isActivePlaceName(attraction.name))
+    .filter((attraction) => attraction.latitude && attraction.longitude)
+    .filter(dedupeByNameAndCategory())
     .slice(0, resultLimit);
 }
 
@@ -160,6 +236,14 @@ function hasKnownPreference(preferences) {
   return preferences.some((preference) => preferenceFilters[preference.toLowerCase()]);
 }
 
+function getSearchTerms(preferences) {
+  const selected = preferences
+    .map((preference) => preference.toLowerCase())
+    .flatMap((preference) => preferenceSearchTerms[preference] || []);
+
+  return [...new Set(selected.length ? selected : ['attractions', 'restaurants', 'parks'])];
+}
+
 function mapAttraction(element) {
   const tags = element.tags || {};
   const latitude = element.lat || element.center?.lat;
@@ -176,6 +260,27 @@ function mapAttraction(element) {
   };
 }
 
+function mapNominatimPlace(item, term) {
+  const address = item.address || {};
+  const namedetails = item.namedetails || {};
+  const name = namedetails.name
+    || item.name
+    || item.display_name?.split(',')[0];
+  const type = item.type || item.category || term;
+
+  return {
+    id: `${item.osm_type}/${item.osm_id}`,
+    name,
+    category: type.replaceAll('_', ' '),
+    latitude: Number(item.lat),
+    longitude: Number(item.lon),
+    address: [address.road, address.city || address.town || address.county].filter(Boolean).join(', ') || undefined,
+    url: item.osm_type && item.osm_id
+      ? `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`
+      : item.display_name
+  };
+}
+
 function getCategory(tags) {
   return tags.amenity
     || tags.tourism
@@ -188,9 +293,13 @@ function getCategory(tags) {
 }
 
 function isOpenPlace(tags) {
-  const inactiveKeys = ['disused', 'abandoned', 'demolished', 'razed', 'removed', 'closed', 'construction'];
+  const inactiveKeys = ['disused', 'abandoned', 'demolished', 'razed', 'removed', 'closed', 'construction', 'former', 'was'];
   const inactiveValues = new Set(['abandoned', 'closed', 'construction', 'demolished', 'disused', 'razed', 'removed', 'vacant']);
   const categoryKeys = ['amenity', 'tourism', 'historic', 'leisure', 'natural', 'shop'];
+
+  if (!isActivePlaceName(tags.name)) {
+    return false;
+  }
 
   if (inactiveKeys.some((key) => isTruthyTag(tags[key]))) {
     return false;
@@ -205,6 +314,37 @@ function isOpenPlace(tags) {
 
 function isTruthyTag(value) {
   return ['1', 'true', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function isActivePlaceName(name) {
+  return !/(^closed\b|permanently closed|temporarily closed|closed down|shut down|폐업|영업종료)/i.test(String(name || ''));
+}
+
+function dedupeAttractions(items) {
+  return items.filter(dedupeByNameAndCategory());
+}
+
+function dedupeByNameAndCategory() {
+  const seen = new Set();
+
+  return (attraction) => {
+    const key = `${attraction.name.toLowerCase()}|${attraction.category.toLowerCase()}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  };
+}
+
+function getLocationText(location = {}) {
+  return [
+    location.destination,
+    location.region,
+    location.country
+  ].filter(Boolean).join(', ');
 }
 
 function getAddress(tags) {
