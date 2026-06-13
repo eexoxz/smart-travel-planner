@@ -21,6 +21,7 @@ beforeAll(async () => {
         results: [{
           name: 'Kyoto',
           country: 'Japan',
+          admin1: 'Kyoto',
           latitude: 35.0116,
           longitude: 135.7681,
           timezone: 'Asia/Tokyo'
@@ -78,6 +79,7 @@ beforeAll(async () => {
     .send({
       destination: 'Kyoto',
       country: 'Japan',
+      region: 'Kyoto',
       startDate: '2026-07-10',
       preferenceTags: ['culture']
     });
@@ -98,6 +100,7 @@ test('builds trip summary', async () => {
   expect(response.status).toBe(200);
   expect(response.body.data.trip.destination).toBe('Kyoto');
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
+  expect(response.body.data.externalData.weather.location.region).toBe('Kyoto');
   expect(response.body.data.externalData.weather.currentWeather.description).toBe('Partly cloudy');
   expect(response.body.data.externalData.attractions.provider).toBe('Wikidata Query Service');
   expect(response.body.data.externalData.attractions.available).toBe(true);
@@ -107,6 +110,8 @@ test('builds trip summary', async () => {
   expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Kyoto National Museum');
   expect(response.body.data.travelPlan.preparationTips).toContain('Check attraction opening hours before visiting museums or cultural sites.');
   expect(global.fetch).toHaveBeenCalledTimes(3);
+  expect(global.fetch.mock.calls[0][0]).toContain('name=Kyoto');
+  expect(global.fetch.mock.calls[0][0]).not.toContain('Kyoto%2C');
 });
 
 test('handles geocoding failure', async () => {
@@ -133,6 +138,7 @@ test('handles attraction fallback', async () => {
         results: [{
           name: 'Kyoto',
           country: 'Japan',
+          admin1: 'Kyoto',
           latitude: 35.0116,
           longitude: 135.7681,
           timezone: 'Asia/Tokyo'

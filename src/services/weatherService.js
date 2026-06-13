@@ -20,17 +20,42 @@ async function fetchJson(url, errorMessage) {
   return response.json();
 }
 
-async function geocodeDestination(destination, country) {
-  const query = country ? `${destination}, ${country}` : destination;
+function normalize(value) {
+  return value?.trim().toLowerCase();
+}
+
+function chooseLocationMatch(results = [], country, region) {
+  const selectedCountry = normalize(country);
+  const selectedRegion = normalize(region);
+  const countryMatches = selectedCountry
+    ? results.filter((place) => normalize(place.country) === selectedCountry)
+    : results;
+
+  if (selectedRegion) {
+    const regionMatch = countryMatches.find((place) => (
+      normalize(place.admin1) === selectedRegion
+      || normalize(place.admin2) === selectedRegion
+      || normalize(place.admin3) === selectedRegion
+    ));
+
+    if (regionMatch) {
+      return regionMatch;
+    }
+  }
+
+  return countryMatches[0] || results[0];
+}
+
+async function geocodeDestination(destination, country, region) {
   const params = new URLSearchParams({
-    name: query,
-    count: '1',
+    name: destination,
+    count: '10',
     language: 'en',
     format: 'json'
   });
 
   const data = await fetchJson(`${GEOCODING_URL}?${params}`, 'Unable to geocode destination');
-  const match = data.results?.[0];
+  const match = chooseLocationMatch(data.results, country, region);
 
   if (!match) {
     throw new AppError('No location found for this trip destination', 404);
@@ -39,6 +64,7 @@ async function geocodeDestination(destination, country) {
   return {
     name: match.name,
     country: match.country,
+    region: match.admin1,
     latitude: match.latitude,
     longitude: match.longitude,
     timezone: match.timezone
@@ -69,8 +95,8 @@ async function getCurrentWeather(latitude, longitude) {
   };
 }
 
-async function getWeatherForDestination(destination, country) {
-  const location = await geocodeDestination(destination, country);
+async function getWeatherForDestination(destination, country, region) {
+  const location = await geocodeDestination(destination, country, region);
   const currentWeather = await getCurrentWeather(location.latitude, location.longitude);
 
   return {
