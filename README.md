@@ -58,7 +58,7 @@ This version uses a local SQLite database at `data/travel-planner.sqlite`. The d
 
 Part B uses two public external APIs. No API key or extra package is required.
 
-- Open-Meteo for geocoding and current weather.
+- Open-Meteo for geocoding and current weather, with Nominatim as a secondary geocoder for smaller areas or neighbourhoods.
 - OpenStreetMap Overpass API with Nominatim and Wikimedia geosearch fallbacks for nearby cafes, restaurants, attractions and points of interest.
 
 The combined endpoint is:
@@ -71,6 +71,7 @@ It combines:
 
 - the authenticated user's saved trip from the local API
 - geocoded destination coordinates from Open-Meteo
+- fallback destination coordinates from Nominatim when Open-Meteo has no match
 - current weather from Open-Meteo
 - nearby places from OpenStreetMap Overpass, Nominatim or Wikimedia geosearch
 - a short travel recommendation based on the weather
