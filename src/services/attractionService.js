@@ -1,9 +1,15 @@
 const AppError = require('../utils/appError');
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
 const SEARCH_RADIUS_METERS = 10000;
+const FALLBACK_RADIUS_METERS = 20000;
 const DEFAULT_RESULT_LIMIT = 8;
 const MAX_RESULT_LIMIT = 15;
+const OVERPASS_CANDIDATE_LIMIT = 80;
+const ACTIVE_PLACE_FILTER = '["name"]["disused"!~"."]["abandoned"!~"."]["demolished"!~"."]["razed"!~"."]["removed"!~"."]["closed"!~"."]["construction"!~"."]';
 
 const preferenceFilters = {
   food: [
@@ -50,57 +56,89 @@ const defaultFilters = [
 async function getNearbyAttractions(latitude, longitude, preferences = [], requestedLimit = DEFAULT_RESULT_LIMIT) {
   const resultLimit = Math.min(Math.max(Number(requestedLimit) || DEFAULT_RESULT_LIMIT, 5), MAX_RESULT_LIMIT);
   const filters = getTargetFilters(preferences);
-  const attractions = await fetchAttractions(latitude, longitude, filters, resultLimit);
+  const hasPreferenceSearch = hasKnownPreference(preferences);
+  let searchRadiusMeters = SEARCH_RADIUS_METERS;
+  let attractions = await fetchAttractions(latitude, longitude, filters, resultLimit, searchRadiusMeters);
+
+  if (!attractions.length && hasPreferenceSearch) {
+    searchRadiusMeters = FALLBACK_RADIUS_METERS;
+    attractions = await fetchAttractions(latitude, longitude, defaultFilters, resultLimit, searchRadiusMeters);
+  }
 
   return {
     provider: 'OpenStreetMap Overpass API',
-    searchRadiusMeters: SEARCH_RADIUS_METERS,
+    searchRadiusMeters,
     searchFocus: getSearchFocus(preferences),
     available: true,
     attractions
   };
 }
 
-async function fetchAttractions(latitude, longitude, filters, resultLimit) {
+async function fetchAttractions(latitude, longitude, filters, resultLimit, radiusMeters) {
   const statements = filters
     .flatMap((filter) => [
-      `node(around:${SEARCH_RADIUS_METERS},${latitude},${longitude})${filter};`,
-      `way(around:${SEARCH_RADIUS_METERS},${latitude},${longitude})${filter};`,
-      `relation(around:${SEARCH_RADIUS_METERS},${latitude},${longitude})${filter};`
+      `node(around:${radiusMeters},${latitude},${longitude})${filter}${ACTIVE_PLACE_FILTER};`,
+      `way(around:${radiusMeters},${latitude},${longitude})${filter}${ACTIVE_PLACE_FILTER};`,
+      `relation(around:${radiusMeters},${latitude},${longitude})${filter}${ACTIVE_PLACE_FILTER};`
     ])
     .join('\n');
+  const candidateLimit = Math.max(resultLimit * 5, OVERPASS_CANDIDATE_LIMIT);
   const query = `
     [out:json][timeout:15];
     (
       ${statements}
     );
-    out center tags ${resultLimit};
+    out center tags ${candidateLimit};
   `;
   const params = new URLSearchParams({ data: query });
-  let response;
+  let lastError;
 
-  try {
-    response = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'SmartTravelPlannerApp/1.0'
-      },
-      body: params
-    });
-  } catch (error) {
-    throw new AppError('Unable to fetch nearby attractions: network request failed', 503);
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'SmartTravelPlannerApp/1.0'
+        },
+        body: params
+      });
+
+      if (!response.ok) {
+        lastError = new AppError(`Unable to fetch nearby attractions: external API returned ${response.status}`, 502);
+        continue;
+      }
+
+      const data = await response.json();
+
+      return normalizeAttractions(data.elements || [], resultLimit);
+    } catch (error) {
+      lastError = error instanceof AppError
+        ? error
+        : new AppError('Unable to fetch nearby attractions: network request failed', 503);
+    }
   }
 
-  if (!response.ok) {
-    throw new AppError(`Unable to fetch nearby attractions: external API returned ${response.status}`, 502);
-  }
+  throw lastError || new AppError('Unable to fetch nearby attractions: network request failed', 503);
+}
 
-  const data = await response.json();
+function normalizeAttractions(elements, resultLimit) {
+  const seen = new Set();
 
-  return (data.elements || [])
+  return elements
+    .filter((element) => isOpenPlace(element.tags || {}))
     .map(mapAttraction)
     .filter((attraction) => attraction.name)
+    .filter((attraction) => {
+      const key = `${attraction.name.toLowerCase()}|${attraction.category.toLowerCase()}`;
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
     .slice(0, resultLimit);
 }
 
@@ -116,6 +154,10 @@ function getSearchFocus(preferences) {
   const selected = preferences.filter((preference) => preferenceFilters[preference.toLowerCase()]);
 
   return selected.length ? selected : ['general'];
+}
+
+function hasKnownPreference(preferences) {
+  return preferences.some((preference) => preferenceFilters[preference.toLowerCase()]);
 }
 
 function mapAttraction(element) {
@@ -135,14 +177,34 @@ function mapAttraction(element) {
 }
 
 function getCategory(tags) {
-  return tags.cuisine
-    || tags.amenity
+  return tags.amenity
     || tags.tourism
     || tags.historic
     || tags.leisure
     || tags.natural
     || tags.shop
+    || tags.cuisine
     || 'point of interest';
+}
+
+function isOpenPlace(tags) {
+  const inactiveKeys = ['disused', 'abandoned', 'demolished', 'razed', 'removed', 'closed', 'construction'];
+  const inactiveValues = new Set(['abandoned', 'closed', 'construction', 'demolished', 'disused', 'razed', 'removed', 'vacant']);
+  const categoryKeys = ['amenity', 'tourism', 'historic', 'leisure', 'natural', 'shop'];
+
+  if (inactiveKeys.some((key) => isTruthyTag(tags[key]))) {
+    return false;
+  }
+
+  if (Object.keys(tags).some((key) => inactiveKeys.some((prefix) => key.startsWith(`${prefix}:`)))) {
+    return false;
+  }
+
+  return !categoryKeys.some((key) => inactiveValues.has(String(tags[key] || '').toLowerCase()));
+}
+
+function isTruthyTag(value) {
+  return ['1', 'true', 'yes'].includes(String(value || '').toLowerCase());
 }
 
 function getAddress(tags) {

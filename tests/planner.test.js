@@ -46,6 +46,26 @@ beforeAll(async () => {
         elements: [
           {
             type: 'node',
+            id: 444444,
+            lat: 35.004,
+            lon: 135.763,
+            tags: {
+              name: 'Closed Coffee Shop',
+              amenity: 'cafe',
+              disused: 'yes'
+            }
+          },
+          {
+            type: 'node',
+            id: 555555,
+            lat: 35.004,
+            lon: 135.763,
+            tags: {
+              amenity: 'cafe'
+            }
+          },
+          {
+            type: 'node',
             id: 703170,
             lat: 35.005,
             lon: 135.764,
@@ -89,7 +109,7 @@ beforeAll(async () => {
       region: 'Kyoto',
       startDate: '2026-07-10',
       endDate: '2026-07-12',
-      preferenceTags: ['food']
+      preferenceTags: ['food', 'museums']
     });
 
   tripId = trip.body.data.id;
@@ -113,7 +133,9 @@ test('builds trip summary', async () => {
   expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Overpass API');
   expect(response.body.data.externalData.attractions.available).toBe(true);
   expect(response.body.data.externalData.attractions.searchFocus).toContain('food');
+  expect(response.body.data.externalData.attractions.searchFocus).toContain('museums');
   expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Nishiki Market');
+  expect(response.body.data.externalData.attractions.attractions.map((item) => item.name)).not.toContain('Closed Coffee Shop');
   expect(response.body.data.recommendation.summary).toContain('Nearby attractions');
   expect(response.body.data.travelPlan.title).toBe('Kyoto travel plan');
   expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Nishiki Market');
@@ -130,6 +152,8 @@ test('builds trip summary', async () => {
   expect(global.fetch.mock.calls[0][0]).not.toContain('Kyoto%2C');
   expect(global.fetch.mock.calls[2][1].body.toString()).toContain('amenity');
   expect(global.fetch.mock.calls[2][1].body.toString()).toContain('cafe');
+  expect(global.fetch.mock.calls[2][1].body.toString()).toContain('museum');
+  expect(global.fetch.mock.calls[2][1].body.toString()).toContain('%5B%22disused%22%21%7E%22.%22%5D');
 });
 
 test('handles geocoding failure', async () => {
