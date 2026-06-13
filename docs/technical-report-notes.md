@@ -29,7 +29,7 @@ The API stores user-specific travel data including destinations, dates, notes, p
 
 ## Third-Party API Integration
 
-The endpoint `GET /api/v1/planner/trips/:id/summary` demonstrates third-party API integration. It first reads the authenticated user's saved trip from the self-developed API, then sends the trip destination to Open-Meteo's geocoding API to obtain latitude and longitude. These coordinates are then used with Open-Meteo's forecast API to fetch current weather conditions and with OpenStreetMap Overpass API to fetch nearby places such as cafes, restaurants, attractions, museums, parks, beaches and shops.
+The endpoint `GET /api/v1/planner/trips/:id/summary` demonstrates third-party API integration. It first reads the authenticated user's saved trip from the self-developed API, then sends the trip destination to Open-Meteo's geocoding API to obtain latitude and longitude. These coordinates are then used with Open-Meteo's forecast API to fetch current weather conditions and with OpenStreetMap Overpass API to fetch nearby places such as cafes, restaurants, attractions, museums, parks, beaches and shops. If the radius-based place search returns no usable results, the backend falls back to OpenStreetMap Nominatim using the saved destination, region and country text.
 
 The final response combines internal and external data in one JSON result: the saved trip, weather provider, resolved location, current temperature, humidity, wind speed, weather description, nearby attractions and a simple travel recommendation. This meets the requirement to merge data from both the self-developed API and third-party APIs.
 
