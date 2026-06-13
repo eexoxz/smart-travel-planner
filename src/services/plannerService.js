@@ -5,7 +5,12 @@ const attractionService = require('./attractionService');
 async function getTripWeatherSummary(userId, tripId) {
   const trip = tripService.getTrip(userId, tripId);
   const weather = await weatherService.getWeatherForDestination(trip.destination, trip.country, trip.region);
-  const attractions = await getAttractionsSafely(weather.location.latitude, weather.location.longitude);
+  const attractions = await getAttractionsSafely(
+    weather.location.latitude,
+    weather.location.longitude,
+    trip.preferenceTags,
+    getRequestedPlaceCount(trip)
+  );
 
   return {
     trip,
@@ -18,18 +23,35 @@ async function getTripWeatherSummary(userId, tripId) {
   };
 }
 
-async function getAttractionsSafely(latitude, longitude) {
+async function getAttractionsSafely(latitude, longitude, preferences, requestedLimit) {
   try {
-    return await attractionService.getNearbyAttractions(latitude, longitude);
+    return await attractionService.getNearbyAttractions(latitude, longitude, preferences, requestedLimit);
   } catch (error) {
     return {
       provider: 'Wikidata Query Service',
       searchRadiusMeters: 10000,
+      searchFocus: preferences.length ? preferences : ['general'],
       available: false,
       attractions: [],
       message: error.message
     };
   }
+}
+
+function getRequestedPlaceCount(trip) {
+  return Math.min(Math.max(getTripDurationDays(trip) * 2, 8), 15);
+}
+
+function getTripDurationDays(trip) {
+  if (!trip.endDate) {
+    return 1;
+  }
+
+  const start = new Date(`${trip.startDate}T00:00:00Z`);
+  const end = new Date(`${trip.endDate}T00:00:00Z`);
+  const diffDays = Math.floor((end - start) / 86400000) + 1;
+
+  return Number.isFinite(diffDays) && diffDays > 0 ? diffDays : 1;
 }
 
 function buildRecommendation(trip, weather, attractions) {

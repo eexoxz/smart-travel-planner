@@ -46,16 +46,16 @@ beforeAll(async () => {
         results: {
           bindings: [
             {
-              place: { value: 'http://www.wikidata.org/entity/Q637720' },
-              placeLabel: { value: 'Kyoto National Museum' },
-              typeLabel: { value: 'museum' },
-              location: { value: 'Point(135.772 35.019)' },
-              article: { value: 'https://en.wikipedia.org/wiki/Kyoto_National_Museum' }
-            },
-            {
               place: { value: 'http://www.wikidata.org/entity/Q703170' },
               placeLabel: { value: 'Nishiki Market' },
-              typeLabel: { value: 'tourist attraction' },
+              typeLabel: { value: 'market' },
+              location: { value: 'Point(135.772 35.019)' },
+              article: { value: 'https://en.wikipedia.org/wiki/Nishiki_Market' }
+            },
+            {
+              place: { value: 'http://www.wikidata.org/entity/Q123456' },
+              placeLabel: { value: 'Kyoto Coffee Stand' },
+              typeLabel: { value: 'café' },
               location: { value: 'Point(135.765 35.012)' }
             }
           ]
@@ -81,7 +81,8 @@ beforeAll(async () => {
       country: 'Japan',
       region: 'Kyoto',
       startDate: '2026-07-10',
-      preferenceTags: ['culture']
+      endDate: '2026-07-12',
+      preferenceTags: ['food']
     });
 
   tripId = trip.body.data.id;
@@ -104,14 +105,16 @@ test('builds trip summary', async () => {
   expect(response.body.data.externalData.weather.currentWeather.description).toBe('Partly cloudy');
   expect(response.body.data.externalData.attractions.provider).toBe('Wikidata Query Service');
   expect(response.body.data.externalData.attractions.available).toBe(true);
-  expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Kyoto National Museum');
+  expect(response.body.data.externalData.attractions.searchFocus).toContain('food');
+  expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Nishiki Market');
   expect(response.body.data.recommendation.summary).toContain('Nearby attractions');
   expect(response.body.data.travelPlan.title).toBe('Kyoto travel plan');
-  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Kyoto National Museum');
-  expect(response.body.data.travelPlan.preparationTips).toContain('Check attraction opening hours before visiting museums or cultural sites.');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Nishiki Market');
+  expect(response.body.data.travelPlan.preparationTips).toContain('Reserve time for local food spots and keep meal times flexible.');
   expect(global.fetch).toHaveBeenCalledTimes(3);
   expect(global.fetch.mock.calls[0][0]).toContain('name=Kyoto');
   expect(global.fetch.mock.calls[0][0]).not.toContain('Kyoto%2C');
+  expect(new URL(global.fetch.mock.calls[2][0]).searchParams.get('query')).toContain('wd:Q11707');
 });
 
 test('handles geocoding failure', async () => {

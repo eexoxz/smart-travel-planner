@@ -2,24 +2,55 @@ const AppError = require('../utils/appError');
 
 const WIKIDATA_QUERY_URL = 'https://query.wikidata.org/sparql';
 const SEARCH_RADIUS_METERS = 10000;
-const RESULT_LIMIT = 5;
+const DEFAULT_RESULT_LIMIT = 8;
+const MAX_RESULT_LIMIT = 15;
 
-async function getNearbyAttractions(latitude, longitude) {
+const preferenceTypes = {
+  food: ['wd:Q11707', 'wd:Q30022'],
+  culture: ['wd:Q570116', 'wd:Q33506', 'wd:Q44539', 'wd:Q16970', 'wd:Q4989906'],
+  museums: ['wd:Q33506'],
+  beach: ['wd:Q40080'],
+  nature: ['wd:Q22698', 'wd:Q1107656', 'wd:Q8502', 'wd:Q23397'],
+  shopping: ['wd:Q11315', 'wd:Q37654'],
+  nightlife: ['wd:Q187456', 'wd:Q622425'],
+  family: ['wd:Q22698', 'wd:Q43501', 'wd:Q194195', 'wd:Q2281788']
+};
+
+const defaultTypes = [
+  'wd:Q570116',
+  'wd:Q33506',
+  'wd:Q839954',
+  'wd:Q4989906',
+  'wd:Q24354',
+  'wd:Q22698',
+  'wd:Q44539',
+  'wd:Q40080',
+  'wd:Q2977',
+  'wd:Q16970',
+  'wd:Q41176'
+];
+
+async function getNearbyAttractions(latitude, longitude, preferences = [], requestedLimit = DEFAULT_RESULT_LIMIT) {
+  const resultLimit = Math.min(Math.max(Number(requestedLimit) || DEFAULT_RESULT_LIMIT, 5), MAX_RESULT_LIMIT);
+  const targetTypes = getTargetTypes(preferences);
+  const attractions = await fetchAttractions(latitude, longitude, targetTypes, resultLimit);
+
+  return {
+    provider: 'Wikidata Query Service',
+    searchRadiusMeters: SEARCH_RADIUS_METERS,
+    searchFocus: getSearchFocus(preferences),
+    available: true,
+    attractions
+  };
+}
+
+async function fetchAttractions(latitude, longitude, targetTypes, resultLimit) {
   const radiusKm = SEARCH_RADIUS_METERS / 1000;
+  const values = targetTypes.map((type) => `        ${type}`).join('\n');
   const query = `
     SELECT ?place ?placeLabel ?location (SAMPLE(?typeLabel) AS ?categoryLabel) (SAMPLE(?article) AS ?article) WHERE {
       VALUES ?targetType {
-        wd:Q570116    # tourist attraction
-        wd:Q33506     # museum
-        wd:Q839954    # archaeological site
-        wd:Q4989906   # monument
-        wd:Q24354     # theatre
-        wd:Q22698     # park
-        wd:Q44539     # temple
-        wd:Q40080     # beach
-        wd:Q2977      # cathedral
-        wd:Q16970     # church
-        wd:Q41176     # building
+${values}
       }
 
       SERVICE wikibase:around {
@@ -37,7 +68,7 @@ async function getNearbyAttractions(latitude, longitude) {
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
     }
     GROUP BY ?place ?placeLabel ?location
-    LIMIT ${RESULT_LIMIT}
+    LIMIT ${resultLimit}
   `;
 
   const params = new URLSearchParams({
@@ -66,14 +97,23 @@ async function getNearbyAttractions(latitude, longitude) {
   const attractions = (data.results?.bindings || [])
     .map(mapAttraction)
     .filter((attraction) => attraction.name)
-    .slice(0, RESULT_LIMIT);
+    .slice(0, resultLimit);
 
-  return {
-    provider: 'Wikidata Query Service',
-    searchRadiusMeters: SEARCH_RADIUS_METERS,
-    available: true,
-    attractions
-  };
+  return attractions;
+}
+
+function getTargetTypes(preferences) {
+  const selected = preferences
+    .map((preference) => preference.toLowerCase())
+    .flatMap((preference) => preferenceTypes[preference] || []);
+
+  return [...new Set(selected.length ? selected : defaultTypes)];
+}
+
+function getSearchFocus(preferences) {
+  const selected = preferences.filter((preference) => preferenceTypes[preference.toLowerCase()]);
+
+  return selected.length ? selected : ['general'];
 }
 
 function mapAttraction(binding) {
