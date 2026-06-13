@@ -84,7 +84,7 @@ function buildRecommendation(trip, weather, attractions) {
     const names = attractions.attractions.slice(0, 3).map((attraction) => attraction.name).join(', ');
     advice.push(`Nearby attractions to consider: ${names}.`);
   } else if (!attractions.available) {
-    advice.push('Nearby attractions could not be loaded at the moment, but the weather result is still available.');
+    advice.push('Live nearby places could not be loaded at the moment, but the weather result is still available.');
   }
 
   if (attractions.message) {
@@ -99,12 +99,7 @@ function buildRecommendation(trip, weather, attractions) {
 
 function buildTravelPlan(trip, weather, attractions) {
   const durationDays = getTripDurationDays(trip);
-  const nearbyPlaces = attractions.attractions.slice(0, Math.min(Math.max(durationDays * 2, 5), 15)).map((attraction, index) => ({
-    order: index + 1,
-    name: attraction.name,
-    category: attraction.category,
-    url: attraction.url
-  }));
+  const nearbyPlaces = buildPlaceList(trip, attractions, durationDays);
 
   return {
     title: `${trip.destination} travel plan`,
@@ -115,8 +110,27 @@ function buildTravelPlan(trip, weather, attractions) {
     preparationTips: buildPreparationTips(trip, weather),
     limitation: attractions.available
       ? 'Nearby places are based on public OpenStreetMap records and should be checked before final booking.'
-      : 'Nearby places could not be loaded, so this plan is based on trip notes and weather only.'
+      : 'Live nearby places could not be loaded, so this plan uses the saved destination, trip notes and weather.'
   };
+}
+
+function buildPlaceList(trip, attractions, durationDays) {
+  const places = attractions.attractions.slice(0, Math.min(Math.max(durationDays * 2, 5), 15)).map((attraction, index) => ({
+    order: index + 1,
+    name: attraction.name,
+    category: attraction.category,
+    url: attraction.url
+  }));
+
+  if (places.length) {
+    return places;
+  }
+
+  return [{
+    order: 1,
+    name: trip.destination,
+    category: 'destination area'
+  }];
 }
 
 function buildItinerary(trip, weather, places, durationDays) {
@@ -146,7 +160,12 @@ function buildItinerary(trip, weather, places, durationDays) {
 
 function getDayLocation(trip, places, index) {
   if (places.length) {
-    return places[index % places.length];
+    const place = places[index % places.length];
+
+    return {
+      ...place,
+      isFallback: place.category === 'destination area'
+    };
   }
 
   return {

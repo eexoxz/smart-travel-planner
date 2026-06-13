@@ -78,7 +78,14 @@ async function getNearbyAttractions(latitude, longitude, preferences = [], reque
   const attractionCount = Array.isArray(attractions) ? attractions.length : attractions.items.length;
 
   if (!attractionCount && searchError) {
-    throw searchError;
+    return {
+      provider: 'Destination fallback',
+      searchRadiusMeters,
+      searchFocus: getSearchFocus(preferences),
+      available: false,
+      message: 'Live nearby places could not be loaded, so the plan uses the saved destination as the daily planning area.',
+      attractions: []
+    };
   }
 
   return {

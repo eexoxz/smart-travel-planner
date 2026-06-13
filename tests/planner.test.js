@@ -313,6 +313,7 @@ test('uses destination-level itinerary when requested places are unavailable', a
   expect(response.body.data.travelPlan.itinerary[0].location).toBe('Jeju City');
   expect(response.body.data.travelPlan.itinerary[0].locationCategory).toBe('destination area');
   expect(response.body.data.travelPlan.itinerary[0].morning).toContain('confirm a suitable stop');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Jeju City');
 });
 
 test('handles geocoding failure', async () => {
@@ -331,7 +332,7 @@ test('handles geocoding failure', async () => {
   expect(response.body.error.message).toBe('Unable to geocode destination: external API returned 429');
 });
 
-test('handles attraction fallback', async () => {
+test('handles unavailable live places without exposing network errors', async () => {
   global.fetch.mockReset()
     .mockResolvedValueOnce({
       ok: true,
@@ -362,7 +363,8 @@ test('handles attraction fallback', async () => {
       ok: false,
       status: 503,
       json: async () => ({})
-    });
+    })
+    .mockRejectedValueOnce(new Error('network request failed'));
 
   const response = await request(app)
     .get(`/api/v1/planner/trips/${tripId}/summary`)
@@ -371,5 +373,10 @@ test('handles attraction fallback', async () => {
   expect(response.status).toBe(200);
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
   expect(response.body.data.externalData.attractions.available).toBe(false);
-  expect(response.body.data.travelPlan.limitation).toContain('Nearby places could not be loaded');
+  expect(response.body.data.externalData.attractions.provider).toBe('Destination fallback');
+  expect(response.body.data.externalData.attractions.message).toContain('saved destination');
+  expect(response.body.data.externalData.attractions.message).not.toContain('network request failed');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Kyoto');
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Kyoto');
+  expect(response.body.data.travelPlan.limitation).toContain('saved destination');
 });
