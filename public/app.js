@@ -325,6 +325,9 @@ function renderSummary(data) {
   const weather = data.externalData.weather.currentWeather;
   const attractions = data.externalData.attractions;
   const plan = data.travelPlan;
+  const attractionNotice = attractions.message
+    ? `<div class="notice">${escapeHtml(attractions.message)}</div>`
+    : '';
   const attractionItems = attractions.attractions.length
     ? attractions.attractions.map((item) => `
       <a class="place-card" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">
@@ -344,6 +347,10 @@ function renderSummary(data) {
           <strong>${escapeHtml(day.date)}</strong>
         </header>
         <h5>${escapeHtml(day.theme)}</h5>
+        <p><strong>Main stop:</strong> ${day.locationUrl
+          ? `<a href="${escapeHtml(day.locationUrl)}" target="_blank" rel="noreferrer">${escapeHtml(day.location)}</a>`
+          : escapeHtml(day.location)} <span>${escapeHtml(day.locationCategory || '')}</span></p>
+        <p><strong>Best time:</strong> ${escapeHtml(day.bestTime)}</p>
         <p><strong>Morning:</strong> ${escapeHtml(day.morning)}</p>
         <p><strong>Afternoon:</strong> ${escapeHtml(day.afternoon)}</p>
         <p><strong>Evening:</strong> ${escapeHtml(day.evening)}</p>
@@ -379,6 +386,7 @@ function renderSummary(data) {
       </section>
       <section class="plan-section">
         <h4>Suggested Nearby Places</h4>
+        ${attractionNotice}
         <div class="place-grid">${attractionItems}</div>
       </section>
       <section class="plan-section">
