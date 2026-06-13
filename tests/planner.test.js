@@ -430,6 +430,106 @@ test('uses Nominatim preference search for arbitrary destination places', async 
   expect(global.fetch.mock.calls[3][0]).toContain('restaurants+in+Tokyo');
 });
 
+test('matches itinerary stops to selected preference themes', async () => {
+  const trip = await request(app)
+    .post('/api/v1/trips')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      destination: 'Lava',
+      country: 'Italy',
+      region: 'Sicily',
+      startDate: '2026-06-17',
+      endDate: '2026-06-19',
+      preferenceTags: ['food', 'culture', 'beach']
+    });
+
+  global.fetch.mockReset()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [{
+          name: 'Lava',
+          country: 'Italy',
+          admin1: 'Sicily',
+          latitude: 37.5,
+          longitude: 15.1,
+          timezone: 'Europe/Rome'
+        }]
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        current: {
+          time: '2026-06-01T12:00',
+          temperature_2m: 24,
+          relative_humidity_2m: 61,
+          weather_code: 1,
+          wind_speed_10m: 11
+        }
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        elements: [
+          {
+            type: 'node',
+            id: 9201,
+            lat: 37.501,
+            lon: 15.101,
+            tags: {
+              name: 'Stretta di u Paese di Lava',
+              amenity: 'restaurant'
+            }
+          },
+          {
+            type: 'node',
+            id: 9202,
+            lat: 37.502,
+            lon: 15.102,
+            tags: {
+              name: 'Lava Heritage Church',
+              historic: 'church'
+            }
+          },
+          {
+            type: 'node',
+            id: 9203,
+            lat: 37.503,
+            lon: 15.103,
+            tags: {
+              name: 'Lava Beach',
+              natural: 'beach'
+            }
+          }
+        ]
+      })
+    });
+
+  const response = await request(app)
+    .get(`/api/v1/planner/trips/${trip.body.data.id}/summary`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.data.travelPlan.itinerary).toHaveLength(3);
+  expect(response.body.data.travelPlan.itinerary[0]).toMatchObject({
+    theme: 'Food and local neighbourhoods',
+    location: 'Stretta di u Paese di Lava',
+    locationCategory: 'restaurant'
+  });
+  expect(response.body.data.travelPlan.itinerary[1]).toMatchObject({
+    theme: 'Culture and landmarks',
+    location: 'Lava Heritage Church',
+    locationCategory: 'church'
+  });
+  expect(response.body.data.travelPlan.itinerary[2]).toMatchObject({
+    theme: 'Beach and coastal time',
+    location: 'Lava Beach',
+    locationCategory: 'beach'
+  });
+});
+
 test('uses Nominatim geocoding when Open-Meteo cannot resolve the destination', async () => {
   const trip = await request(app)
     .post('/api/v1/trips')

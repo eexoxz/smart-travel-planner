@@ -212,10 +212,11 @@ async function searchNamedPlaces(location, preferences, resultLimit) {
   const terms = getNominatimTerms(preferences);
   const viewbox = getViewbox(location.latitude, location.longitude);
   const results = [];
+  const minimumSearches = Math.max(getKnownPreferences(preferences).length, 1);
 
-  for (const term of terms) {
+  for (const [index, search] of terms.entries()) {
     const params = new URLSearchParams({
-      q: `${term} in ${placeText}`,
+      q: `${search.term} in ${placeText}`,
       format: 'jsonv2',
       limit: String(Math.min(Math.max(Math.ceil(resultLimit / terms.length) + 2, 3), 8)),
       addressdetails: '1',
@@ -229,9 +230,9 @@ async function searchNamedPlaces(location, preferences, resultLimit) {
     }
 
     const data = await fetchNominatim(`${NOMINATIM_URL}?${params}`);
-    results.push(...data.map((item) => mapNominatimPlace(item, term)));
+    results.push(...data.map((item) => mapNominatimPlace(item, search.term, search.preference)));
 
-    if (dedupeAttractions(results).length >= resultLimit) {
+    if (index + 1 >= minimumSearches && dedupeAttractions(results).length >= resultLimit) {
       break;
     }
   }
@@ -311,7 +312,7 @@ function getTargetFilters(preferences) {
 }
 
 function getSearchFocus(preferences) {
-  const selected = preferences.filter((preference) => preferenceFilters[preference.toLowerCase()]);
+  const selected = getKnownPreferences(preferences);
 
   return selected.length ? selected : ['general'];
 }
@@ -321,11 +322,35 @@ function hasKnownPreference(preferences) {
 }
 
 function getNominatimTerms(preferences) {
-  const selected = preferences
-    .map((preference) => preference.toLowerCase())
-    .flatMap((preference) => preferenceSearchTerms[preference] || []);
+  const selectedPreferences = getKnownPreferences(preferences);
 
-  return [...new Set(selected.length ? selected : ['tourist attractions', 'restaurants', 'parks'])].slice(0, 5);
+  if (!selectedPreferences.length) {
+    return ['tourist attractions', 'restaurants', 'parks'].map((term) => ({
+      term,
+      preference: 'general'
+    }));
+  }
+
+  const searches = [];
+  const maxTermsPerPreference = Math.max(...selectedPreferences.map((preference) => preferenceSearchTerms[preference].length));
+
+  for (let index = 0; index < maxTermsPerPreference; index += 1) {
+    for (const preference of selectedPreferences) {
+      const term = preferenceSearchTerms[preference][index];
+
+      if (term) {
+        searches.push({ term, preference });
+      }
+    }
+  }
+
+  return searches.slice(0, Math.min(Math.max(selectedPreferences.length * 2, 5), 10));
+}
+
+function getKnownPreferences(preferences) {
+  return [...new Set(preferences
+    .map((preference) => preference.toLowerCase())
+    .filter((preference) => preferenceFilters[preference]))];
 }
 
 function getPreferenceScore(name, preferences) {
@@ -389,7 +414,7 @@ function mapAttraction(element) {
   };
 }
 
-function mapNominatimPlace(item, term) {
+function mapNominatimPlace(item, term, preference) {
   const address = item.address || {};
   const namedetails = item.namedetails || {};
   const name = namedetails.name
@@ -400,7 +425,7 @@ function mapNominatimPlace(item, term) {
   return {
     id: `${item.osm_type}/${item.osm_id}`,
     name,
-    category: type.replaceAll('_', ' '),
+    category: getNominatimCategory(type, term, preference),
     latitude: Number(item.lat),
     longitude: Number(item.lon),
     address: [address.road, address.city || address.town || address.county].filter(Boolean).join(', ') || undefined,
@@ -408,6 +433,20 @@ function mapNominatimPlace(item, term) {
       ? `https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`
       : item.display_name
   };
+}
+
+function getNominatimCategory(type, term, preference) {
+  const category = String(type || '').replaceAll('_', ' ').toLowerCase();
+
+  if (category && !['yes', 'attraction', 'point'].includes(category)) {
+    return category;
+  }
+
+  if (preference && preference !== 'general') {
+    return preference;
+  }
+
+  return term.replaceAll('_', ' ');
 }
 
 function getCategory(tags) {

@@ -115,15 +115,18 @@ function buildTravelPlan(trip, weather, attractions) {
 }
 
 function buildPlaceList(trip, attractions, durationDays) {
-  const places = attractions.attractions.slice(0, Math.min(Math.max(durationDays * 2, 5), 15)).map((attraction, index) => ({
+  const places = attractions.attractions.map((attraction, index) => ({
     order: index + 1,
     name: attraction.name,
     category: attraction.category,
-    url: attraction.url
+    url: attraction.url,
+    preferenceTags: getPlacePreferenceTags(attraction)
   }));
 
   if (places.length) {
-    return places;
+    return prioritizePlacesForPreferences(places, trip.preferenceTags)
+      .slice(0, Math.min(Math.max(durationDays * 2, 5), 15))
+      .map((place, index) => ({ ...place, order: index + 1 }));
   }
 
   return [{
@@ -135,16 +138,17 @@ function buildPlaceList(trip, attractions, durationDays) {
 
 function buildItinerary(trip, weather, places, durationDays) {
   const totalDays = Math.min(durationDays, 14);
+  const usage = new Map();
 
   return Array.from({ length: totalDays }, (_, index) => {
-    const location = getDayLocation(trip, places, index);
-    const theme = getDayTheme(trip, index);
-    const bestTime = getBestVisitTime(theme, weather);
+    const focus = getDayFocus(trip, index);
+    const location = getDayLocation(trip, places, focus.preference, usage);
+    const bestTime = getBestVisitTime(focus.theme, weather);
 
     return {
       day: index + 1,
       date: addDays(trip.startDate, index),
-      theme,
+      theme: focus.theme,
       location: location.name,
       locationCategory: location.category,
       locationUrl: location.url,
@@ -158,20 +162,27 @@ function buildItinerary(trip, weather, places, durationDays) {
   });
 }
 
-function getDayLocation(trip, places, index) {
-  if (places.length) {
-    const place = places[index % places.length];
-
+function getDayLocation(trip, places, preference, usage) {
+  if (!places.length) {
     return {
-      ...place,
-      isFallback: place.category === 'destination area'
+      name: trip.destination,
+      category: 'destination area',
+      isFallback: true
     };
   }
 
+  const matchingPlaces = places.filter((place) => placeMatchesPreference(place, preference));
+  const source = matchingPlaces.length ? matchingPlaces : places;
+  const usageKey = matchingPlaces.length ? preference : 'general';
+  const nextIndex = usage.get(usageKey) || 0;
+  const place = source[nextIndex % source.length];
+
+  usage.set(usageKey, nextIndex + 1);
+
   return {
-    name: trip.destination,
-    category: 'destination area',
-    isFallback: true
+    ...place,
+    isFallback: place.category === 'destination area',
+    isPreferenceMatch: matchingPlaces.length > 0
   };
 }
 
@@ -182,20 +193,83 @@ function addDays(date, days) {
   return value.toISOString().slice(0, 10);
 }
 
-function getDayTheme(trip, index) {
+function getDayFocus(trip, index) {
   const tags = trip.preferenceTags.map((tag) => tag.toLowerCase());
   const themes = [];
 
-  if (tags.includes('food')) themes.push('Food and local neighbourhoods');
-  if (tags.includes('culture') || tags.includes('museums')) themes.push('Culture and landmarks');
-  if (tags.includes('beach')) themes.push('Beach and coastal time');
-  if (tags.includes('nature')) themes.push('Nature and slower outdoor time');
-  if (tags.includes('shopping')) themes.push('Shopping and city browsing');
-  if (tags.includes('nightlife')) themes.push('Evening atmosphere');
-  if (tags.includes('family')) themes.push('Family-friendly pacing');
+  if (tags.includes('food')) themes.push({ preference: 'food', theme: 'Food and local neighbourhoods' });
+  if (tags.includes('museums')) themes.push({ preference: 'museums', theme: 'Museums and galleries' });
+  if (tags.includes('culture')) themes.push({ preference: 'culture', theme: 'Culture and landmarks' });
+  if (tags.includes('beach')) themes.push({ preference: 'beach', theme: 'Beach and coastal time' });
+  if (tags.includes('nature')) themes.push({ preference: 'nature', theme: 'Nature and slower outdoor time' });
+  if (tags.includes('shopping')) themes.push({ preference: 'shopping', theme: 'Shopping and city browsing' });
+  if (tags.includes('nightlife')) themes.push({ preference: 'nightlife', theme: 'Evening atmosphere' });
+  if (tags.includes('family')) themes.push({ preference: 'family', theme: 'Family-friendly pacing' });
 
-  return themes.length ? themes[index % themes.length] : 'Balanced sightseeing';
+  return themes.length ? themes[index % themes.length] : { preference: 'general', theme: 'Balanced sightseeing' };
 }
+
+function prioritizePlacesForPreferences(places, preferences) {
+  const selectedPreferences = getKnownPreferences(preferences);
+
+  if (!selectedPreferences.length) {
+    return places;
+  }
+
+  const result = [];
+  const used = new Set();
+
+  for (const preference of selectedPreferences) {
+    const match = places.find((place) => !used.has(place.order) && placeMatchesPreference(place, preference));
+
+    if (match) {
+      result.push(match);
+      used.add(match.order);
+    }
+  }
+
+  for (const place of places) {
+    if (!used.has(place.order)) {
+      result.push(place);
+    }
+  }
+
+  return result;
+}
+
+function getKnownPreferences(preferences) {
+  return preferences
+    .map((preference) => preference.toLowerCase())
+    .filter((preference) => preferenceKeywords[preference]);
+}
+
+function getPlacePreferenceTags(place) {
+  const text = `${place.name || ''} ${place.category || ''}`.toLowerCase();
+
+  return Object.keys(preferenceKeywords)
+    .filter((preference) => preferenceKeywords[preference].some((keyword) => text.includes(keyword)));
+}
+
+function placeMatchesPreference(place, preference) {
+  if (!preference || preference === 'general') {
+    return true;
+  }
+
+  const tags = place.preferenceTags || getPlacePreferenceTags(place);
+
+  return tags.includes(preference);
+}
+
+const preferenceKeywords = {
+  food: ['restaurant', 'cafe', 'food', 'marketplace', 'market', 'bakery', 'bar', 'pub', 'dining', 'street food'],
+  culture: ['culture', 'cultural', 'historic', 'heritage', 'temple', 'shrine', 'church', 'mosque', 'palace', 'monument', 'landmark', 'village', 'castle', 'attraction'],
+  museums: ['museum', 'gallery'],
+  beach: ['beach', 'coast', 'coastal', 'waterfront', 'bay', 'harbour', 'marina', 'island'],
+  nature: ['park', 'garden', 'forest', 'wood', 'mountain', 'peak', 'river', 'lake', 'waterfall', 'viewpoint', 'trail', 'nature'],
+  shopping: ['shop', 'shopping', 'mall', 'market', 'boutique', 'store'],
+  nightlife: ['night', 'nightclub', 'bar', 'pub', 'club'],
+  family: ['zoo', 'aquarium', 'theme park', 'playground', 'family', 'park', 'garden']
+};
 
 function getWeatherBasedAfternoon(weather) {
   if (weather.temperatureCelsius >= 30) {
