@@ -127,7 +127,7 @@ paths:
   /planner/trips/{id}/summary:
     get:
       summary: Combine a saved trip with weather and nearby attractions
-      description: Uses the authenticated user's trip destination, geocodes it with Open-Meteo, fetches current weather, retrieves nearby point-of-interest items from OpenStreetMap Overpass API with Nominatim and curated city fallbacks, and returns a travel recommendation.
+      description: Uses the authenticated user's trip destination, geocodes it with Open-Meteo, fetches current weather, retrieves nearby point-of-interest items from OpenStreetMap Overpass API with dynamic Nominatim and Wikimedia geosearch fallbacks, and returns a travel recommendation.
       parameters:
         - $ref: "#/components/parameters/TripId"
       responses:
