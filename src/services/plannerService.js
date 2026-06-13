@@ -87,7 +87,8 @@ function buildRecommendation(trip, weather, attractions) {
 }
 
 function buildTravelPlan(trip, weather, attractions) {
-  const nearbyPlaces = attractions.attractions.slice(0, 5).map((attraction, index) => ({
+  const durationDays = getTripDurationDays(trip);
+  const nearbyPlaces = attractions.attractions.slice(0, Math.min(Math.max(durationDays * 2, 5), 15)).map((attraction, index) => ({
     order: index + 1,
     name: attraction.name,
     category: attraction.category,
@@ -99,11 +100,86 @@ function buildTravelPlan(trip, weather, attractions) {
     overview: buildOverview(trip),
     weatherAdvice: buildWeatherAdvice(weather),
     suggestedPlaces: nearbyPlaces,
+    itinerary: buildItinerary(trip, weather, nearbyPlaces, durationDays),
     preparationTips: buildPreparationTips(trip, weather),
     limitation: attractions.available
       ? 'Nearby places are based on public Wikidata records and should be checked before final booking.'
       : 'Nearby places could not be loaded, so this plan is based on trip notes and weather only.'
   };
+}
+
+function buildItinerary(trip, weather, places, durationDays) {
+  const totalDays = Math.min(durationDays, 14);
+
+  return Array.from({ length: totalDays }, (_, index) => {
+    const firstPlace = places.length ? places[(index * 2) % places.length] : undefined;
+    const secondPlace = places.length ? places[(index * 2 + 1) % places.length] : undefined;
+
+    return {
+      day: index + 1,
+      date: addDays(trip.startDate, index),
+      theme: getDayTheme(trip, index),
+      morning: firstPlace
+        ? `Start with ${firstPlace.name} while energy levels are high.`
+        : `Start near ${trip.destination} and use saved notes to choose the first stop.`,
+      afternoon: secondPlace
+        ? `Continue to ${secondPlace.name} and keep transit time flexible.`
+        : getWeatherBasedAfternoon(weather),
+      evening: getEveningPlan(trip, index)
+    };
+  });
+}
+
+function addDays(date, days) {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+
+  return value.toISOString().slice(0, 10);
+}
+
+function getDayTheme(trip, index) {
+  const tags = trip.preferenceTags.map((tag) => tag.toLowerCase());
+  const themes = [];
+
+  if (tags.includes('food')) themes.push('Food and local neighbourhoods');
+  if (tags.includes('culture') || tags.includes('museums')) themes.push('Culture and landmarks');
+  if (tags.includes('beach')) themes.push('Beach and coastal time');
+  if (tags.includes('nature')) themes.push('Nature and slower outdoor time');
+  if (tags.includes('shopping')) themes.push('Shopping and city browsing');
+  if (tags.includes('nightlife')) themes.push('Evening atmosphere');
+  if (tags.includes('family')) themes.push('Family-friendly pacing');
+
+  return themes.length ? themes[index % themes.length] : 'Balanced sightseeing';
+}
+
+function getWeatherBasedAfternoon(weather) {
+  if (weather.temperatureCelsius >= 30) {
+    return 'Use the hotter afternoon period for indoor stops, cafes or shaded areas.';
+  }
+
+  if (weather.weatherCode >= 51 && weather.weatherCode <= 82) {
+    return 'Keep an indoor backup plan in case rain affects outdoor stops.';
+  }
+
+  return 'Use the afternoon for flexible sightseeing around the destination area.';
+}
+
+function getEveningPlan(trip, index) {
+  const tags = trip.preferenceTags.map((tag) => tag.toLowerCase());
+
+  if (tags.includes('food')) {
+    return 'Leave the evening open for dinner, cafes or a local food street.';
+  }
+
+  if (tags.includes('nightlife')) {
+    return 'Use the evening for nightlife or a lively district, depending on safety and transport.';
+  }
+
+  if (index === 0) {
+    return 'Keep the first evening light for check-in, orientation and nearby food.';
+  }
+
+  return 'End with a lower-intensity activity and review the next day route.';
 }
 
 function buildOverview(trip) {

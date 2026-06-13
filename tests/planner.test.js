@@ -110,6 +110,13 @@ test('builds trip summary', async () => {
   expect(response.body.data.recommendation.summary).toContain('Nearby attractions');
   expect(response.body.data.travelPlan.title).toBe('Kyoto travel plan');
   expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Nishiki Market');
+  expect(response.body.data.travelPlan.itinerary).toHaveLength(3);
+  expect(response.body.data.travelPlan.itinerary[0]).toMatchObject({
+    day: 1,
+    date: '2026-07-10',
+    theme: 'Food and local neighbourhoods'
+  });
+  expect(response.body.data.travelPlan.itinerary[0].morning).toContain('Nishiki Market');
   expect(response.body.data.travelPlan.preparationTips).toContain('Reserve time for local food spots and keep meal times flexible.');
   expect(global.fetch).toHaveBeenCalledTimes(3);
   expect(global.fetch.mock.calls[0][0]).toContain('name=Kyoto');
