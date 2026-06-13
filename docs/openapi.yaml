@@ -428,9 +428,21 @@ components:
                       theme:
                         type: string
                         example: Food and local neighbourhoods
+                      location:
+                        type: string
+                        example: Nishiki Market
+                      locationCategory:
+                        type: string
+                        example: marketplace
+                      locationUrl:
+                        type: string
+                        example: https://www.openstreetmap.org/node/703170
+                      bestTime:
+                        type: string
+                        example: Late afternoon or evening.
                       morning:
                         type: string
-                        example: Start with Nishiki Market while energy levels are high.
+                        example: Make Nishiki Market the main stop for this day.
                       afternoon:
                         type: string
                         example: Continue to a nearby cafe and keep transit time flexible.

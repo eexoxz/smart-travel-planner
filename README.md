@@ -89,6 +89,7 @@ The interface supports:
 - selectable travel preference chips used by the travel plan
 - budget amount with currency
 - generate a travel plan that combines saved trip data with weather and nearby points of interest
+- view a main location and recommended visiting time for each trip day
 - view a day-by-day itinerary based on trip dates and preferences
 - open Swagger documentation for API testing
 
