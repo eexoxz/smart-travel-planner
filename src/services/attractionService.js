@@ -1,42 +1,59 @@
 const AppError = require('../utils/appError');
 
-const WIKIDATA_QUERY_URL = 'https://query.wikidata.org/sparql';
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const SEARCH_RADIUS_METERS = 10000;
 const DEFAULT_RESULT_LIMIT = 8;
 const MAX_RESULT_LIMIT = 15;
 
-const preferenceTypes = {
-  food: ['wd:Q11707', 'wd:Q30022'],
-  culture: ['wd:Q570116', 'wd:Q33506', 'wd:Q44539', 'wd:Q16970', 'wd:Q4989906'],
-  museums: ['wd:Q33506'],
-  beach: ['wd:Q40080'],
-  nature: ['wd:Q22698', 'wd:Q1107656', 'wd:Q8502', 'wd:Q23397'],
-  shopping: ['wd:Q11315', 'wd:Q37654'],
-  nightlife: ['wd:Q187456', 'wd:Q622425'],
-  family: ['wd:Q22698', 'wd:Q43501', 'wd:Q194195', 'wd:Q2281788']
+const preferenceFilters = {
+  food: [
+    '["amenity"~"^(cafe|restaurant|food_court|fast_food|bar|pub)$"]'
+  ],
+  culture: [
+    '["tourism"~"^(attraction|museum|gallery)$"]',
+    '["historic"]',
+    '["amenity"="place_of_worship"]'
+  ],
+  museums: [
+    '["tourism"="museum"]',
+    '["tourism"="gallery"]'
+  ],
+  beach: [
+    '["natural"="beach"]'
+  ],
+  nature: [
+    '["leisure"="park"]',
+    '["tourism"="picnic_site"]',
+    '["natural"~"^(wood|water|peak|beach)$"]'
+  ],
+  shopping: [
+    '["shop"]',
+    '["amenity"="marketplace"]'
+  ],
+  nightlife: [
+    '["amenity"~"^(bar|pub|nightclub)$"]'
+  ],
+  family: [
+    '["tourism"~"^(zoo|theme_park|aquarium)$"]',
+    '["leisure"~"^(park|playground|garden)$"]'
+  ]
 };
 
-const defaultTypes = [
-  'wd:Q570116',
-  'wd:Q33506',
-  'wd:Q839954',
-  'wd:Q4989906',
-  'wd:Q24354',
-  'wd:Q22698',
-  'wd:Q44539',
-  'wd:Q40080',
-  'wd:Q2977',
-  'wd:Q16970',
-  'wd:Q41176'
+const defaultFilters = [
+  '["tourism"~"^(attraction|museum|gallery|viewpoint|zoo|theme_park|aquarium)$"]',
+  '["historic"]',
+  '["leisure"~"^(park|garden)$"]',
+  '["natural"="beach"]',
+  '["amenity"~"^(cafe|restaurant|marketplace)$"]'
 ];
 
 async function getNearbyAttractions(latitude, longitude, preferences = [], requestedLimit = DEFAULT_RESULT_LIMIT) {
   const resultLimit = Math.min(Math.max(Number(requestedLimit) || DEFAULT_RESULT_LIMIT, 5), MAX_RESULT_LIMIT);
-  const targetTypes = getTargetTypes(preferences);
-  const attractions = await fetchAttractions(latitude, longitude, targetTypes, resultLimit);
+  const filters = getTargetFilters(preferences);
+  const attractions = await fetchAttractions(latitude, longitude, filters, resultLimit);
 
   return {
-    provider: 'Wikidata Query Service',
+    provider: 'OpenStreetMap Overpass API',
     searchRadiusMeters: SEARCH_RADIUS_METERS,
     searchFocus: getSearchFocus(preferences),
     available: true,
@@ -44,46 +61,32 @@ async function getNearbyAttractions(latitude, longitude, preferences = [], reque
   };
 }
 
-async function fetchAttractions(latitude, longitude, targetTypes, resultLimit) {
-  const radiusKm = SEARCH_RADIUS_METERS / 1000;
-  const values = targetTypes.map((type) => `        ${type}`).join('\n');
+async function fetchAttractions(latitude, longitude, filters, resultLimit) {
+  const statements = filters
+    .flatMap((filter) => [
+      `node(around:${SEARCH_RADIUS_METERS},${latitude},${longitude})${filter};`,
+      `way(around:${SEARCH_RADIUS_METERS},${latitude},${longitude})${filter};`,
+      `relation(around:${SEARCH_RADIUS_METERS},${latitude},${longitude})${filter};`
+    ])
+    .join('\n');
   const query = `
-    SELECT ?place ?placeLabel ?location (SAMPLE(?typeLabel) AS ?categoryLabel) (SAMPLE(?article) AS ?article) WHERE {
-      VALUES ?targetType {
-${values}
-      }
-
-      SERVICE wikibase:around {
-        ?place wdt:P625 ?location .
-        bd:serviceParam wikibase:center "Point(${longitude} ${latitude})"^^geo:wktLiteral .
-        bd:serviceParam wikibase:radius "${radiusKm}" .
-      }
-
-      ?place wdt:P31 ?type .
-      ?type wdt:P279* ?targetType .
-      OPTIONAL {
-        ?article schema:about ?place ;
-          schema:isPartOf <https://en.wikipedia.org/> .
-      }
-      SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-    }
-    GROUP BY ?place ?placeLabel ?location
-    LIMIT ${resultLimit}
+    [out:json][timeout:15];
+    (
+      ${statements}
+    );
+    out center tags ${resultLimit};
   `;
-
-  const params = new URLSearchParams({
-    query,
-    format: 'json'
-  });
-
+  const params = new URLSearchParams({ data: query });
   let response;
 
   try {
-    response = await fetch(`${WIKIDATA_QUERY_URL}?${params}`, {
+    response = await fetch(OVERPASS_URL, {
+      method: 'POST',
       headers: {
-        Accept: 'application/sparql-results+json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent': 'SmartTravelPlannerApp/1.0'
-      }
+      },
+      body: params
     });
   } catch (error) {
     throw new AppError('Unable to fetch nearby attractions: network request failed', 503);
@@ -94,53 +97,60 @@ ${values}
   }
 
   const data = await response.json();
-  const attractions = (data.results?.bindings || [])
+
+  return (data.elements || [])
     .map(mapAttraction)
     .filter((attraction) => attraction.name)
     .slice(0, resultLimit);
-
-  return attractions;
 }
 
-function getTargetTypes(preferences) {
+function getTargetFilters(preferences) {
   const selected = preferences
     .map((preference) => preference.toLowerCase())
-    .flatMap((preference) => preferenceTypes[preference] || []);
+    .flatMap((preference) => preferenceFilters[preference] || []);
 
-  return [...new Set(selected.length ? selected : defaultTypes)];
+  return [...new Set(selected.length ? selected : defaultFilters)];
 }
 
 function getSearchFocus(preferences) {
-  const selected = preferences.filter((preference) => preferenceTypes[preference.toLowerCase()]);
+  const selected = preferences.filter((preference) => preferenceFilters[preference.toLowerCase()]);
 
   return selected.length ? selected : ['general'];
 }
 
-function mapAttraction(binding) {
-  const coordinates = parsePoint(binding.location?.value);
-  const wikidataId = binding.place?.value?.split('/').pop();
+function mapAttraction(element) {
+  const tags = element.tags || {};
+  const latitude = element.lat || element.center?.lat;
+  const longitude = element.lon || element.center?.lon;
 
   return {
-    id: wikidataId,
-    name: binding.placeLabel?.value,
-    category: binding.categoryLabel?.value || 'point of interest',
-    latitude: coordinates?.latitude,
-    longitude: coordinates?.longitude,
-    url: binding.article?.value || `https://www.wikidata.org/wiki/${wikidataId}`
+    id: `${element.type}/${element.id}`,
+    name: tags.name,
+    category: getCategory(tags),
+    latitude,
+    longitude,
+    address: getAddress(tags),
+    url: tags.website || tags['contact:website'] || `https://www.openstreetmap.org/${element.type}/${element.id}`
   };
 }
 
-function parsePoint(value) {
-  const match = value?.match(/Point\(([-\d.]+) ([-\d.]+)\)/);
+function getCategory(tags) {
+  return tags.cuisine
+    || tags.amenity
+    || tags.tourism
+    || tags.historic
+    || tags.leisure
+    || tags.natural
+    || tags.shop
+    || 'point of interest';
+}
 
-  if (!match) {
-    return undefined;
-  }
-
-  return {
-    longitude: Number(match[1]),
-    latitude: Number(match[2])
-  };
+function getAddress(tags) {
+  return [
+    tags['addr:housenumber'],
+    tags['addr:street'],
+    tags['addr:city']
+  ].filter(Boolean).join(', ') || undefined;
 }
 
 module.exports = {

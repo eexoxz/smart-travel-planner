@@ -43,23 +43,30 @@ beforeAll(async () => {
     .mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        results: {
-          bindings: [
-            {
-              place: { value: 'http://www.wikidata.org/entity/Q703170' },
-              placeLabel: { value: 'Nishiki Market' },
-              typeLabel: { value: 'market' },
-              location: { value: 'Point(135.772 35.019)' },
-              article: { value: 'https://en.wikipedia.org/wiki/Nishiki_Market' }
-            },
-            {
-              place: { value: 'http://www.wikidata.org/entity/Q123456' },
-              placeLabel: { value: 'Kyoto Coffee Stand' },
-              typeLabel: { value: 'café' },
-              location: { value: 'Point(135.765 35.012)' }
+        elements: [
+          {
+            type: 'node',
+            id: 703170,
+            lat: 35.005,
+            lon: 135.764,
+            tags: {
+              name: 'Nishiki Market',
+              amenity: 'marketplace',
+              website: 'https://example.com/nishiki'
             }
-          ]
-        }
+          },
+          {
+            type: 'node',
+            id: 123456,
+            lat: 35.006,
+            lon: 135.765,
+            tags: {
+              name: 'Kyoto Coffee Stand',
+              amenity: 'cafe',
+              cuisine: 'coffee_shop'
+            }
+          }
+        ]
       })
     });
 
@@ -103,7 +110,7 @@ test('builds trip summary', async () => {
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
   expect(response.body.data.externalData.weather.location.region).toBe('Kyoto');
   expect(response.body.data.externalData.weather.currentWeather.description).toBe('Partly cloudy');
-  expect(response.body.data.externalData.attractions.provider).toBe('Wikidata Query Service');
+  expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Overpass API');
   expect(response.body.data.externalData.attractions.available).toBe(true);
   expect(response.body.data.externalData.attractions.searchFocus).toContain('food');
   expect(response.body.data.externalData.attractions.attractions[0].name).toBe('Nishiki Market');
@@ -121,7 +128,8 @@ test('builds trip summary', async () => {
   expect(global.fetch).toHaveBeenCalledTimes(3);
   expect(global.fetch.mock.calls[0][0]).toContain('name=Kyoto');
   expect(global.fetch.mock.calls[0][0]).not.toContain('Kyoto%2C');
-  expect(new URL(global.fetch.mock.calls[2][0]).searchParams.get('query')).toContain('wd:Q11707');
+  expect(global.fetch.mock.calls[2][1].body.toString()).toContain('amenity');
+  expect(global.fetch.mock.calls[2][1].body.toString()).toContain('cafe');
 });
 
 test('handles geocoding failure', async () => {

@@ -28,7 +28,7 @@ async function getAttractionsSafely(latitude, longitude, preferences, requestedL
     return await attractionService.getNearbyAttractions(latitude, longitude, preferences, requestedLimit);
   } catch (error) {
     return {
-      provider: 'Wikidata Query Service',
+      provider: 'OpenStreetMap Overpass API',
       searchRadiusMeters: 10000,
       searchFocus: preferences.length ? preferences : ['general'],
       available: false,
@@ -103,7 +103,7 @@ function buildTravelPlan(trip, weather, attractions) {
     itinerary: buildItinerary(trip, weather, nearbyPlaces, durationDays),
     preparationTips: buildPreparationTips(trip, weather),
     limitation: attractions.available
-      ? 'Nearby places are based on public Wikidata records and should be checked before final booking.'
+      ? 'Nearby places are based on public OpenStreetMap records and should be checked before final booking.'
       : 'Nearby places could not be loaded, so this plan is based on trip notes and weather only.'
   };
 }
