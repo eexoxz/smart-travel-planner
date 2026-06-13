@@ -441,8 +441,11 @@ function updateDateBounds() {
 }
 
 function getSelectedPreferences() {
-  return Array.from(document.querySelectorAll('input[name="preference"]:checked'))
+  const selected = Array.from(document.querySelectorAll('input[name="preference"]:checked'))
     .map((input) => input.value);
+  const typed = parsePreferenceText(elements.tagsInput.value);
+
+  return [...new Set([...selected, ...typed])];
 }
 
 function setSelectedPreferences(tags) {
@@ -451,6 +454,27 @@ function setSelectedPreferences(tags) {
     input.checked = selected.has(input.value);
   });
   elements.tagsInput.value = Array.from(selected).join(', ');
+}
+
+function parsePreferenceText(value) {
+  return value
+    .split(',')
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function syncPreferencesFromChoices() {
+  const checked = Array.from(document.querySelectorAll('input[name="preference"]:checked'))
+    .map((input) => input.value);
+  elements.tagsInput.value = checked.join(', ');
+}
+
+function syncChoicesFromPreferenceText() {
+  const typed = new Set(parsePreferenceText(elements.tagsInput.value));
+
+  document.querySelectorAll('input[name="preference"]').forEach((input) => {
+    input.checked = typed.has(input.value);
+  });
 }
 
 function logout() {
@@ -490,6 +514,10 @@ function attachHandlers() {
   elements.countryInput.addEventListener('change', safeHandler(handleCountryChange));
   elements.regionInput.addEventListener('change', safeHandler(handleRegionChange));
   elements.startDateInput.addEventListener('change', updateDateBounds);
+  elements.tagsInput.addEventListener('input', syncChoicesFromPreferenceText);
+  document.querySelectorAll('input[name="preference"]').forEach((input) => {
+    input.addEventListener('change', syncPreferencesFromChoices);
+  });
 }
 
 function safeHandler(handler) {
@@ -505,6 +533,7 @@ function safeHandler(handler) {
 attachHandlers();
 populateCountries();
 updateDateBounds();
+syncPreferencesFromChoices();
 setAuthMode('login');
 setSessionStatus();
 loadTrips().catch(() => undefined);
