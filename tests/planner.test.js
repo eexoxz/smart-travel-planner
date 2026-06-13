@@ -430,6 +430,84 @@ test('uses Nominatim preference search for arbitrary destination places', async 
   expect(global.fetch.mock.calls[3][0]).toContain('restaurants+in+Tokyo');
 });
 
+test('uses Nominatim geocoding when Open-Meteo cannot resolve the destination', async () => {
+  const trip = await request(app)
+    .post('/api/v1/trips')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      destination: 'Asakusa',
+      country: 'Japan',
+      region: 'Tokyo',
+      startDate: '2026-09-01',
+      endDate: '2026-09-03',
+      preferenceTags: ['food']
+    });
+
+  global.fetch.mockReset()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ results: [] })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([
+        {
+          lat: '35.7148',
+          lon: '139.7967',
+          name: 'Asakusa',
+          display_name: 'Asakusa, Taito, Tokyo, Japan',
+          namedetails: {
+            name: 'Asakusa'
+          },
+          address: {
+            city: 'Tokyo',
+            state: 'Tokyo',
+            country: 'Japan'
+          }
+        }
+      ])
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        current: {
+          time: '2026-06-01T12:00',
+          temperature_2m: 26,
+          relative_humidity_2m: 65,
+          weather_code: 1,
+          wind_speed_10m: 9
+        }
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        elements: [
+          {
+            type: 'node',
+            id: 9101,
+            lat: 35.714,
+            lon: 139.796,
+            tags: {
+              name: 'Asakusa Food Hall',
+              amenity: 'restaurant'
+            }
+          }
+        ]
+      })
+    });
+
+  const response = await request(app)
+    .get(`/api/v1/planner/trips/${trip.body.data.id}/summary`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.data.externalData.weather.location.name).toBe('Asakusa');
+  expect(response.body.data.externalData.weather.location.region).toBe('Tokyo');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Asakusa Food Hall');
+  expect(global.fetch.mock.calls[1][0]).toContain('nominatim.openstreetmap.org');
+});
+
 test('handles geocoding failure', async () => {
   global.fetch.mockReset().mockResolvedValueOnce({
     ok: false,

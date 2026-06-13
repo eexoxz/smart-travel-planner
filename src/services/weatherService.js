@@ -3,6 +3,8 @@ const { describeWeatherCode } = require('./weatherCodeService');
 
 const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_TIMEOUT_MS = 5000;
 
 async function fetchJson(url, errorMessage) {
   let response;
@@ -22,6 +24,36 @@ async function fetchJson(url, errorMessage) {
 
 function normalize(value) {
   return value?.trim().toLowerCase();
+}
+
+async function fetchJsonSafely(url, options = {}) {
+  let response;
+
+  try {
+    response = await fetchWithTimeout(url, options, NOMINATIM_TIMEOUT_MS);
+  } catch (error) {
+    return undefined;
+  }
+
+  if (!response.ok) {
+    return undefined;
+  }
+
+  return response.json();
+}
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function chooseLocationMatch(results = [], country, region) {
@@ -57,18 +89,87 @@ async function geocodeDestination(destination, country, region) {
   const data = await fetchJson(`${GEOCODING_URL}?${params}`, 'Unable to geocode destination');
   const match = chooseLocationMatch(data.results, country, region);
 
-  if (!match) {
-    throw new AppError('No location found for this trip destination', 404);
+  if (match) {
+    return {
+      name: match.name,
+      country: match.country,
+      region: match.admin1,
+      latitude: match.latitude,
+      longitude: match.longitude,
+      timezone: match.timezone
+    };
   }
 
+  const nominatimMatch = await geocodeWithNominatim(destination, country, region);
+
+  if (nominatimMatch) {
+    return nominatimMatch;
+  }
+
+  throw new AppError('No location found for this trip destination', 404);
+}
+
+async function geocodeWithNominatim(destination, country, region) {
+  const query = [destination, region, country].filter(Boolean).join(', ');
+  const params = new URLSearchParams({
+    q: query,
+    format: 'jsonv2',
+    limit: '5',
+    addressdetails: '1',
+    namedetails: '1'
+  });
+  const data = await fetchJsonSafely(`${NOMINATIM_URL}?${params}`, {
+    headers: {
+      'User-Agent': 'SmartTravelPlannerApp/1.0'
+    }
+  });
+
+  if (!Array.isArray(data) || !data.length) {
+    return undefined;
+  }
+
+  const selected = chooseNominatimMatch(data, country, region);
+
+  if (!selected) {
+    return undefined;
+  }
+
+  const address = selected.address || {};
+
   return {
-    name: match.name,
-    country: match.country,
-    region: match.admin1,
-    latitude: match.latitude,
-    longitude: match.longitude,
-    timezone: match.timezone
+    name: selected.namedetails?.name
+      || selected.name
+      || selected.display_name?.split(',')[0]
+      || destination,
+    country: address.country || country,
+    region: address.state || address.region || address.county || region,
+    latitude: Number(selected.lat),
+    longitude: Number(selected.lon),
+    timezone: 'auto'
   };
+}
+
+function chooseNominatimMatch(results = [], country, region) {
+  const selectedCountry = normalize(country);
+  const selectedRegion = normalize(region);
+  const countryMatches = selectedCountry
+    ? results.filter((place) => normalize(place.address?.country) === selectedCountry)
+    : results;
+
+  if (selectedRegion) {
+    const regionMatch = countryMatches.find((place) => (
+      normalize(place.address?.state) === selectedRegion
+      || normalize(place.address?.region) === selectedRegion
+      || normalize(place.address?.county) === selectedRegion
+      || normalize(place.address?.city) === selectedRegion
+    ));
+
+    if (regionMatch) {
+      return regionMatch;
+    }
+  }
+
+  return countryMatches[0] || results[0];
 }
 
 async function getCurrentWeather(latitude, longitude) {
