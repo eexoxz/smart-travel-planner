@@ -1,4 +1,5 @@
 const AppError = require('../utils/appError');
+const fallbackPlaceService = require('./fallbackPlaceService');
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
@@ -75,6 +76,23 @@ async function getNearbyAttractions(latitude, longitude, preferences = [], reque
     attractions = await searchNamedPlaces({ ...location, latitude, longitude }, resultLimit);
   }
 
+  if (!getAttractionCount(attractions)) {
+    const curated = fallbackPlaceService.getCuratedPlaces(location, preferences, resultLimit);
+
+    if (curated.items.length) {
+      return {
+        provider: 'Curated destination fallback',
+        searchRadiusMeters,
+        searchFocus: getSearchFocus(preferences),
+        available: true,
+        message: curated.matchedPreferences
+          ? 'Live nearby places could not be loaded, so the plan uses curated destination suggestions.'
+          : 'No matching places were found for the selected preferences, so the plan uses general curated destination suggestions.',
+        attractions: curated.items
+      };
+    }
+  }
+
   const attractionCount = Array.isArray(attractions) ? attractions.length : attractions.items.length;
 
   if (!attractionCount && searchError) {
@@ -96,6 +114,10 @@ async function getNearbyAttractions(latitude, longitude, preferences = [], reque
     message,
     attractions: attractions.items || attractions
   };
+}
+
+function getAttractionCount(attractions) {
+  return Array.isArray(attractions) ? attractions.length : attractions.items.length;
 }
 
 async function fetchAttractions(latitude, longitude, filters, resultLimit, radiusMeters) {

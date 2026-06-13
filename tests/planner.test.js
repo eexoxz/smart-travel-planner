@@ -308,12 +308,66 @@ test('uses destination-level itinerary when requested places are unavailable', a
     .set('Authorization', `Bearer ${token}`);
 
   expect(response.status).toBe(200);
-  expect(response.body.data.externalData.attractions.message).toContain('broader destination-level');
+  expect(response.body.data.externalData.attractions.message).toContain('curated destination suggestions');
   expect(response.body.data.travelPlan.itinerary).toHaveLength(2);
-  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Jeju City');
-  expect(response.body.data.travelPlan.itinerary[0].locationCategory).toBe('destination area');
-  expect(response.body.data.travelPlan.itinerary[0].morning).toContain('confirm a suitable stop');
-  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Jeju City');
+  expect(response.body.data.externalData.attractions.provider).toBe('Curated destination fallback');
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Iho Tewoo Beach');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Iho Tewoo Beach');
+});
+
+test('uses curated Busan places when live place lookup is unavailable', async () => {
+  const trip = await request(app)
+    .post('/api/v1/trips')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      destination: 'Busan',
+      country: 'South Korea',
+      region: 'Busan',
+      startDate: '2026-08-10',
+      endDate: '2026-08-12',
+      preferenceTags: ['food']
+    });
+
+  global.fetch.mockReset()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [{
+          name: 'Busan',
+          country: 'South Korea',
+          admin1: 'Busan',
+          latitude: 35.1796,
+          longitude: 129.0756,
+          timezone: 'Asia/Seoul'
+        }]
+      })
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        current: {
+          time: '2026-06-01T12:00',
+          temperature_2m: 25,
+          relative_humidity_2m: 64,
+          weather_code: 1,
+          wind_speed_10m: 14
+        }
+      })
+    })
+    .mockRejectedValueOnce(new Error('network request failed'))
+    .mockRejectedValueOnce(new Error('network request failed'));
+
+  const response = await request(app)
+    .get(`/api/v1/planner/trips/${trip.body.data.id}/summary`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.data.externalData.attractions.provider).toBe('Curated destination fallback');
+  expect(response.body.data.externalData.attractions.message).toContain('curated destination suggestions');
+  expect(response.body.data.travelPlan.itinerary).toHaveLength(3);
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Jagalchi Market');
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Jagalchi Market');
+  expect(response.body.data.travelPlan.itinerary[1].location).toBe('BIFF Square');
 });
 
 test('handles geocoding failure', async () => {
@@ -372,11 +426,11 @@ test('handles unavailable live places without exposing network errors', async ()
 
   expect(response.status).toBe(200);
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
-  expect(response.body.data.externalData.attractions.available).toBe(false);
-  expect(response.body.data.externalData.attractions.provider).toBe('Destination fallback');
-  expect(response.body.data.externalData.attractions.message).toContain('saved destination');
+  expect(response.body.data.externalData.attractions.available).toBe(true);
+  expect(response.body.data.externalData.attractions.provider).toBe('Curated destination fallback');
+  expect(response.body.data.externalData.attractions.message).toContain('curated destination suggestions');
   expect(response.body.data.externalData.attractions.message).not.toContain('network request failed');
-  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Kyoto');
-  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Kyoto');
-  expect(response.body.data.travelPlan.limitation).toContain('saved destination');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Nishiki Market');
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Nishiki Market');
+  expect(response.body.data.travelPlan.limitation).toContain('OpenStreetMap records');
 });
