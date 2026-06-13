@@ -407,3 +407,33 @@ components:
                 summary:
                   type: string
                   example: Weather conditions look suitable for general sightseeing.
+            travelPlan:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: Kyoto travel plan
+                itinerary:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      day:
+                        type: integer
+                        example: 1
+                      date:
+                        type: string
+                        format: date
+                        example: "2026-07-10"
+                      theme:
+                        type: string
+                        example: Food and local neighbourhoods
+                      morning:
+                        type: string
+                        example: Start with Nishiki Market while energy levels are high.
+                      afternoon:
+                        type: string
+                        example: Continue to a nearby cafe and keep transit time flexible.
+                      evening:
+                        type: string
+                        example: Leave the evening open for dinner, cafes or a local food street.
