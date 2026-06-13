@@ -1,14 +1,15 @@
 const AppError = require('../utils/appError');
-const fallbackPlaceService = require('./fallbackPlaceService');
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+const WIKIMEDIA_URL = 'https://en.wikipedia.org/w/api.php';
 const SEARCH_RADIUS_METERS = 10000;
 const DEFAULT_RESULT_LIMIT = 8;
 const MAX_RESULT_LIMIT = 15;
 const OVERPASS_CANDIDATE_LIMIT = 80;
 const OVERPASS_TIMEOUT_MS = 8000;
 const NOMINATIM_TIMEOUT_MS = 5000;
+const WIKIMEDIA_TIMEOUT_MS = 5000;
 const ACTIVE_PLACE_FILTER = '["name"]["disused"!~"."]["abandoned"!~"."]["demolished"!~"."]["razed"!~"."]["removed"!~"."]["closed"!~"."]["construction"!~"."]';
 
 const preferenceFilters = {
@@ -53,6 +54,17 @@ const defaultFilters = [
   '["amenity"~"^(cafe|restaurant|marketplace)$"]'
 ];
 
+const preferenceSearchTerms = {
+  food: ['restaurants', 'cafes', 'food markets'],
+  culture: ['tourist attractions', 'historic landmarks', 'temples'],
+  museums: ['museums', 'art galleries'],
+  beach: ['beaches', 'waterfront attractions'],
+  nature: ['parks', 'gardens', 'viewpoints'],
+  shopping: ['shopping streets', 'markets', 'malls'],
+  nightlife: ['night markets', 'bars', 'nightlife'],
+  family: ['family attractions', 'parks', 'aquariums']
+};
+
 async function getNearbyAttractions(latitude, longitude, preferences = [], requestedLimit = DEFAULT_RESULT_LIMIT, location = {}) {
   const resultLimit = Math.min(Math.max(Number(requestedLimit) || DEFAULT_RESULT_LIMIT, 5), MAX_RESULT_LIMIT);
   const filters = getTargetFilters(preferences);
@@ -73,24 +85,11 @@ async function getNearbyAttractions(latitude, longitude, preferences = [], reque
       message = 'No matching preference-specific places were found, so the plan uses a broader destination-level place search.';
     }
 
-    attractions = await searchNamedPlaces({ ...location, latitude, longitude }, resultLimit);
+    attractions = await searchNamedPlaces({ ...location, latitude, longitude }, preferences, resultLimit);
   }
 
   if (!getAttractionCount(attractions)) {
-    const curated = fallbackPlaceService.getCuratedPlaces(location, preferences, resultLimit);
-
-    if (curated.items.length) {
-      return {
-        provider: 'Curated destination fallback',
-        searchRadiusMeters,
-        searchFocus: getSearchFocus(preferences),
-        available: true,
-        message: curated.matchedPreferences
-          ? 'Live nearby places could not be loaded, so the plan uses curated destination suggestions.'
-          : 'No matching places were found for the selected preferences, so the plan uses general curated destination suggestions.',
-        attractions: curated.items
-      };
-    }
+    attractions = await searchWikimediaPlaces({ ...location, latitude, longitude }, preferences, resultLimit);
   }
 
   const attractionCount = Array.isArray(attractions) ? attractions.length : attractions.items.length;
@@ -160,33 +159,86 @@ async function fetchAttractions(latitude, longitude, filters, resultLimit, radiu
   return normalizeAttractions(data.elements || [], resultLimit);
 }
 
-async function searchNamedPlaces(location, resultLimit) {
+async function searchWikimediaPlaces(location, preferences, resultLimit) {
+  if (!Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) {
+    return { provider: 'Wikimedia geosearch fallback', items: [] };
+  }
+
+  const params = new URLSearchParams({
+    action: 'query',
+    list: 'geosearch',
+    gscoord: `${location.latitude}|${location.longitude}`,
+    gsradius: '10000',
+    gslimit: '50',
+    format: 'json',
+    origin: '*'
+  });
+  const data = await fetchWikimedia(`${WIKIMEDIA_URL}?${params}`);
+  const pages = data.query?.geosearch || [];
+
+  return {
+    provider: 'Wikimedia geosearch fallback',
+    items: normalizeWikimediaPlaces(pages, preferences, resultLimit)
+  };
+}
+
+async function fetchWikimedia(url) {
+  let response;
+
+  try {
+    response = await fetchWithTimeout(url, {
+      headers: {
+        'User-Agent': 'SmartTravelPlannerApp/1.0'
+      }
+    }, WIKIMEDIA_TIMEOUT_MS);
+  } catch (error) {
+    return {};
+  }
+
+  if (!response || !response.ok) {
+    return {};
+  }
+
+  return response.json();
+}
+
+async function searchNamedPlaces(location, preferences, resultLimit) {
   const placeText = getLocationText(location);
 
   if (!placeText) {
     return { provider: 'OpenStreetMap Nominatim', items: [] };
   }
 
-  const params = new URLSearchParams({
-    q: `tourist attractions in ${placeText}`,
-    format: 'jsonv2',
-    limit: String(resultLimit),
-    addressdetails: '1',
-    namedetails: '1',
-    extratags: '1'
-  });
+  const terms = getNominatimTerms(preferences);
   const viewbox = getViewbox(location.latitude, location.longitude);
+  const results = [];
 
-  if (viewbox) {
-    params.set('viewbox', viewbox);
-    params.set('bounded', '1');
+  for (const term of terms) {
+    const params = new URLSearchParams({
+      q: `${term} in ${placeText}`,
+      format: 'jsonv2',
+      limit: String(Math.min(Math.max(Math.ceil(resultLimit / terms.length) + 2, 3), 8)),
+      addressdetails: '1',
+      namedetails: '1',
+      extratags: '1'
+    });
+
+    if (viewbox) {
+      params.set('viewbox', viewbox);
+      params.set('bounded', '1');
+    }
+
+    const data = await fetchNominatim(`${NOMINATIM_URL}?${params}`);
+    results.push(...data.map((item) => mapNominatimPlace(item, term)));
+
+    if (dedupeAttractions(results).length >= resultLimit) {
+      break;
+    }
   }
-
-  const data = await fetchNominatim(`${NOMINATIM_URL}?${params}`);
 
   return {
     provider: 'OpenStreetMap Nominatim',
-    items: dedupeAttractions(data.map((item) => mapNominatimPlace(item, 'tourist attraction')))
+    items: dedupeAttractions(results)
       .filter((place) => place.name && isActivePlaceName(place.name))
       .slice(0, resultLimit)
   };
@@ -209,7 +261,9 @@ async function fetchNominatim(url) {
     return [];
   }
 
-  return response.json();
+  const data = await response.json();
+
+  return Array.isArray(data) ? data : [];
 }
 
 function normalizeAttractions(elements, resultLimit) {
@@ -221,6 +275,31 @@ function normalizeAttractions(elements, resultLimit) {
     .filter((attraction) => attraction.latitude && attraction.longitude)
     .filter(dedupeByNameAndCategory())
     .slice(0, resultLimit);
+}
+
+function normalizeWikimediaPlaces(pages, preferences, resultLimit) {
+  return pages
+    .map((page) => {
+      const category = getWikimediaCategory(page.title, preferences);
+
+      return {
+        id: `wikimedia/${page.pageid}`,
+        name: page.title,
+        category,
+        latitude: page.lat,
+        longitude: page.lon,
+        url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replaceAll(' ', '_'))}`,
+        score: getPreferenceScore(page.title, preferences)
+      };
+    })
+    .filter((place) => place.name && isActivePlaceName(place.name))
+    .sort((left, right) => right.score - left.score)
+    .filter(dedupeByNameAndCategory())
+    .slice(0, resultLimit)
+    .map(({ score: _score, ...place }, index) => ({
+      ...place,
+      order: index + 1
+    }));
 }
 
 function getTargetFilters(preferences) {
@@ -239,6 +318,45 @@ function getSearchFocus(preferences) {
 
 function hasKnownPreference(preferences) {
   return preferences.some((preference) => preferenceFilters[preference.toLowerCase()]);
+}
+
+function getNominatimTerms(preferences) {
+  const selected = preferences
+    .map((preference) => preference.toLowerCase())
+    .flatMap((preference) => preferenceSearchTerms[preference] || []);
+
+  return [...new Set(selected.length ? selected : ['tourist attractions', 'restaurants', 'parks'])].slice(0, 5);
+}
+
+function getPreferenceScore(name, preferences) {
+  const lowerName = name.toLowerCase();
+  const tags = preferences.map((preference) => preference.toLowerCase());
+
+  return tags.reduce((score, tag) => score + getPreferenceKeywords(tag)
+    .filter((keyword) => lowerName.includes(keyword)).length, 0);
+}
+
+function getWikimediaCategory(name, preferences) {
+  const tags = preferences.map((preference) => preference.toLowerCase());
+  const matchedTag = tags.find((tag) => getPreferenceKeywords(tag)
+    .some((keyword) => name.toLowerCase().includes(keyword)));
+
+  return matchedTag || 'point of interest';
+}
+
+function getPreferenceKeywords(preference) {
+  const keywords = {
+    food: ['market', 'food', 'restaurant', 'cafe', 'street'],
+    culture: ['temple', 'shrine', 'palace', 'church', 'tower', 'historic', 'village', 'monument'],
+    museums: ['museum', 'gallery'],
+    beach: ['beach', 'bay', 'coast', 'waterfront'],
+    nature: ['park', 'garden', 'mountain', 'river', 'lake', 'forest', 'island'],
+    shopping: ['market', 'mall', 'shopping', 'street'],
+    nightlife: ['night', 'bar', 'club', 'square', 'street'],
+    family: ['zoo', 'aquarium', 'park', 'garden', 'museum']
+  };
+
+  return keywords[preference] || [];
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {

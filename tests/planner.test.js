@@ -255,7 +255,7 @@ test('falls back to named place search when nearby radius search is empty', asyn
   expect(global.fetch.mock.calls[3][0]).toContain('bounded=1');
 });
 
-test('uses destination-level itinerary when requested places are unavailable', async () => {
+test('uses Wikimedia geosearch when Nominatim has no matching places', async () => {
   const trip = await request(app)
     .post('/api/v1/trips')
     .set('Authorization', `Bearer ${token}`)
@@ -301,6 +301,31 @@ test('uses destination-level itinerary when requested places are unavailable', a
     .mockResolvedValueOnce({
       ok: true,
       json: async () => ([])
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([])
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        query: {
+          geosearch: [
+            {
+              pageid: 7001,
+              title: 'Iho Tewoo Beach',
+              lat: 33.497,
+              lon: 126.452
+            },
+            {
+              pageid: 7002,
+              title: 'Jeju National Museum',
+              lat: 33.513,
+              lon: 126.548
+            }
+          ]
+        }
+      })
     });
 
   const response = await request(app)
@@ -308,24 +333,24 @@ test('uses destination-level itinerary when requested places are unavailable', a
     .set('Authorization', `Bearer ${token}`);
 
   expect(response.status).toBe(200);
-  expect(response.body.data.externalData.attractions.message).toContain('curated destination suggestions');
+  expect(response.body.data.externalData.attractions.message).toContain('broader destination-level');
   expect(response.body.data.travelPlan.itinerary).toHaveLength(2);
-  expect(response.body.data.externalData.attractions.provider).toBe('Curated destination fallback');
+  expect(response.body.data.externalData.attractions.provider).toBe('Wikimedia geosearch fallback');
   expect(response.body.data.travelPlan.itinerary[0].location).toBe('Iho Tewoo Beach');
   expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Iho Tewoo Beach');
 });
 
-test('uses curated Busan places when live place lookup is unavailable', async () => {
+test('uses Nominatim preference search for arbitrary destination places', async () => {
   const trip = await request(app)
     .post('/api/v1/trips')
     .set('Authorization', `Bearer ${token}`)
     .send({
-      destination: 'Busan',
-      country: 'South Korea',
-      region: 'Busan',
+      destination: 'Tokyo',
+      country: 'Japan',
+      region: 'Tokyo',
       startDate: '2026-08-10',
-      endDate: '2026-08-12',
-      preferenceTags: ['food']
+      endDate: '2026-08-19',
+      preferenceTags: ['food', 'museums']
     });
 
   global.fetch.mockReset()
@@ -333,12 +358,12 @@ test('uses curated Busan places when live place lookup is unavailable', async ()
       ok: true,
       json: async () => ({
         results: [{
-          name: 'Busan',
-          country: 'South Korea',
-          admin1: 'Busan',
-          latitude: 35.1796,
-          longitude: 129.0756,
-          timezone: 'Asia/Seoul'
+          name: 'Tokyo',
+          country: 'Japan',
+          admin1: 'Tokyo',
+          latitude: 35.6762,
+          longitude: 139.6503,
+          timezone: 'Asia/Tokyo'
         }]
       })
     })
@@ -355,19 +380,54 @@ test('uses curated Busan places when live place lookup is unavailable', async ()
       })
     })
     .mockRejectedValueOnce(new Error('network request failed'))
-    .mockRejectedValueOnce(new Error('network request failed'));
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([
+        {
+          osm_type: 'node',
+          osm_id: 8101,
+          lat: '35.665',
+          lon: '139.770',
+          category: 'tourism',
+          type: 'attraction',
+          name: 'Tsukiji Outer Market',
+          display_name: 'Tsukiji Outer Market, Tokyo, Japan',
+          address: {
+            city: 'Tokyo'
+          }
+        },
+        {
+          osm_type: 'node',
+          osm_id: 8102,
+          lat: '35.718',
+          lon: '139.776',
+          category: 'tourism',
+          type: 'museum',
+          name: 'Tokyo National Museum',
+          display_name: 'Tokyo National Museum, Tokyo, Japan',
+          address: {
+            city: 'Tokyo'
+          }
+        }
+      ])
+    })
+    .mockResolvedValue({
+      ok: true,
+      json: async () => ([])
+    });
 
   const response = await request(app)
     .get(`/api/v1/planner/trips/${trip.body.data.id}/summary`)
     .set('Authorization', `Bearer ${token}`);
 
   expect(response.status).toBe(200);
-  expect(response.body.data.externalData.attractions.provider).toBe('Curated destination fallback');
-  expect(response.body.data.externalData.attractions.message).toContain('curated destination suggestions');
-  expect(response.body.data.travelPlan.itinerary).toHaveLength(3);
-  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Jagalchi Market');
-  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Jagalchi Market');
-  expect(response.body.data.travelPlan.itinerary[1].location).toBe('BIFF Square');
+  expect(response.body.data.externalData.attractions.provider).toBe('OpenStreetMap Nominatim');
+  expect(response.body.data.travelPlan.itinerary).toHaveLength(10);
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Tsukiji Outer Market');
+  expect(response.body.data.travelPlan.suggestedPlaces[1].name).toBe('Tokyo National Museum');
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Tsukiji Outer Market');
+  expect(response.body.data.travelPlan.itinerary[1].location).toBe('Tokyo National Museum');
+  expect(global.fetch.mock.calls[3][0]).toContain('restaurants+in+Tokyo');
 });
 
 test('handles geocoding failure', async () => {
@@ -426,11 +486,11 @@ test('handles unavailable live places without exposing network errors', async ()
 
   expect(response.status).toBe(200);
   expect(response.body.data.externalData.weather.provider).toBe('Open-Meteo');
-  expect(response.body.data.externalData.attractions.available).toBe(true);
-  expect(response.body.data.externalData.attractions.provider).toBe('Curated destination fallback');
-  expect(response.body.data.externalData.attractions.message).toContain('curated destination suggestions');
+  expect(response.body.data.externalData.attractions.available).toBe(false);
+  expect(response.body.data.externalData.attractions.provider).toBe('Destination fallback');
+  expect(response.body.data.externalData.attractions.message).toContain('saved destination');
   expect(response.body.data.externalData.attractions.message).not.toContain('network request failed');
-  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Nishiki Market');
-  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Nishiki Market');
-  expect(response.body.data.travelPlan.limitation).toContain('OpenStreetMap records');
+  expect(response.body.data.travelPlan.suggestedPlaces[0].name).toBe('Kyoto');
+  expect(response.body.data.travelPlan.itinerary[0].location).toBe('Kyoto');
+  expect(response.body.data.travelPlan.limitation).toContain('saved destination');
 });
