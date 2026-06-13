@@ -336,6 +336,20 @@ function renderSummary(data) {
   const tips = plan.preparationTips
     .map((tip) => `<span class="tip-chip">${escapeHtml(tip)}</span>`)
     .join('');
+  const itinerary = plan.itinerary?.length
+    ? plan.itinerary.map((day) => `
+      <article class="day-card">
+        <header>
+          <span>Day ${day.day}</span>
+          <strong>${escapeHtml(day.date)}</strong>
+        </header>
+        <h5>${escapeHtml(day.theme)}</h5>
+        <p><strong>Morning:</strong> ${escapeHtml(day.morning)}</p>
+        <p><strong>Afternoon:</strong> ${escapeHtml(day.afternoon)}</p>
+        <p><strong>Evening:</strong> ${escapeHtml(day.evening)}</p>
+      </article>
+    `).join('')
+    : '<div class="notice">No itinerary items returned.</div>';
 
   elements.summaryContent.innerHTML = `
     <div class="summary-content">
@@ -358,6 +372,10 @@ function renderSummary(data) {
       <section class="plan-section">
         <h4>Weather Advice</h4>
         <p>${escapeHtml(weather.description)} - ${escapeHtml(plan.weatherAdvice)}</p>
+      </section>
+      <section class="plan-section">
+        <h4>Day-by-Day Itinerary</h4>
+        <div class="itinerary-grid">${itinerary}</div>
       </section>
       <section class="plan-section">
         <h4>Suggested Nearby Places</h4>

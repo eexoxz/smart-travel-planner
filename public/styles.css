@@ -416,6 +416,41 @@ textarea {
   gap: 10px;
 }
 
+.itinerary-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.day-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.day-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.day-card h5 {
+  margin: 0;
+  color: var(--black);
+  font-size: 15px;
+}
+
+.day-card p {
+  margin: 0;
+  color: #5f5160;
+  line-height: 1.45;
+}
+
 .place-card {
   display: grid;
   gap: 6px;
